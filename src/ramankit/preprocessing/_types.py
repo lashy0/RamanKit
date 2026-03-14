@@ -12,6 +12,8 @@ from ramankit.core.spectrum import Spectrum
 
 type Array1D = npt.NDArray[np.float64]
 type FloatArray = npt.NDArray[np.float64]
+
 type SpectralData = Spectrum | SpectrumCollection | RamanImage
 SpectralDataT = TypeVar("SpectralDataT", Spectrum, SpectrumCollection, RamanImage)
+type AxisTransform1D = Callable[[Array1D, Array1D], tuple[Array1D, Array1D]]
 type Transform1D = Callable[[Array1D, Array1D], Array1D]

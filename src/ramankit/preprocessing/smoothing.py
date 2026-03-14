@@ -5,7 +5,7 @@ from dataclasses import dataclass
 import numpy as np
 from scipy.signal import savgol_filter  # type: ignore[import-untyped]
 
-from ramankit.preprocessing._base import PreprocessingStep
+from ramankit.pipelines.pipeline import PreprocessingStep
 from ramankit.preprocessing._types import Array1D
 
 

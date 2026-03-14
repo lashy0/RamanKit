@@ -4,7 +4,7 @@ from dataclasses import dataclass
 
 from pybaselines import Baseline  # type: ignore[import-untyped]
 
-from ramankit.preprocessing._base import PreprocessingStep
+from ramankit.pipelines.pipeline import PreprocessingStep
 from ramankit.preprocessing._types import Array1D
 
 
