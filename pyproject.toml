@@ -1,0 +1,42 @@
+[project]
+name = "ramankit"
+version = "0.1.0"
+description = "Python toolkit for Raman spectra processing and analysis"
+readme = "README.md"
+authors = []
+requires-python = ">=3.12"
+dependencies = [
+    "numpy>=2.3.0",
+    "scipy>=1.16.2",
+]
+
+keywords = ["raman", "spectroscopy", "spectra", "science", "chemometrics"]
+
+[build-system]
+requires = ["uv_build>=0.10.9,<0.11.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "mypy>=1.19.1",
+    "pytest>=9.0.2",
+    "ruff>=0.15.5",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+cache_dir = ".cache/pytest"
+
+[tool.mypy]
+python_version = "3.12"
+strict = false
+warn_unused_ignores = true
+warn_redundant_casts = true
+disallow_untyped_defs = false
