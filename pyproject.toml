@@ -7,6 +7,7 @@ authors = []
 requires-python = ">=3.12"
 dependencies = [
     "numpy>=2.3.0",
+    "pybaselines>=1.2.1",
     "scipy>=1.16.2",
 ]
 
@@ -33,6 +34,7 @@ select = ["E", "F", "I", "UP", "B"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 cache_dir = ".cache/pytest"
+addopts = "-p no:cacheprovider"
 
 [tool.mypy]
 python_version = "3.12"

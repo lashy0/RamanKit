@@ -37,19 +37,7 @@ class SpectrumCollection:
         spectral_axis_name: str | None = None,
         spectral_unit: str | None = None,
     ) -> None:
-        """Create a validated spectrum collection.
-
-        Args:
-            axis: Shared one-dimensional spectral axis values.
-            intensity: Two-dimensional array with shape ``(n_spectra, n_points)``.
-            metadata: Scientific metadata attached to the collection.
-            provenance: Provenance describing how the collection was created.
-            spectral_axis_name: Explicit semantic label for the spectral axis.
-            spectral_unit: Explicit unit for the spectral axis values.
-
-        Raises:
-            ValueError: If the axis or intensity arrays are invalid or incompatible.
-        """
+        """Create a validated spectrum collection."""
 
         axis_array, axis_direction = coerce_axis(axis)
         intensity_array = coerce_intensity(intensity, ndim=2, label="SpectrumCollection intensity")
@@ -66,6 +54,17 @@ class SpectrumCollection:
         object.__setattr__(self, "spectral_axis_name", spectral_axis_name)
         object.__setattr__(self, "spectral_unit", spectral_unit)
         object.__setattr__(self, "axis_direction", axis_direction)
+
+    @classmethod
+    def from_spectra(
+        cls,
+        spectra: list[Spectrum] | tuple[Spectrum, ...],
+    ) -> SpectrumCollection:
+        """Build a collection from spectra sharing the same spectral axis."""
+
+        from ramankit.core.operations import stack_spectra
+
+        return stack_spectra(spectra)
 
     @property
     def n_spectra(self) -> int:
@@ -117,3 +116,65 @@ class SpectrumCollection:
             spectral_axis_name=self.spectral_axis_name,
             spectral_unit=self.spectral_unit,
         )
+
+    def add(self, other: SpectrumCollection | float | int) -> SpectrumCollection:
+        """Return the elementwise sum of this collection and an operand."""
+
+        from ramankit.core.operations import add
+
+        return add(self, other)
+
+    def subtract(self, other: SpectrumCollection | float | int) -> SpectrumCollection:
+        """Return the elementwise difference of this collection and an operand."""
+
+        from ramankit.core.operations import subtract
+
+        return subtract(self, other)
+
+    def multiply(self, other: SpectrumCollection | float | int) -> SpectrumCollection:
+        """Return the elementwise product of this collection and an operand."""
+
+        from ramankit.core.operations import multiply
+
+        return multiply(self, other)
+
+    def divide(self, other: SpectrumCollection | float | int) -> SpectrumCollection:
+        """Return the elementwise quotient of this collection and an operand."""
+
+        from ramankit.core.operations import divide
+
+        return divide(self, other)
+
+    def mean(self) -> Spectrum:
+        """Return the mean spectrum of the collection."""
+
+        from ramankit.core.operations import mean
+
+        return mean(self)
+
+    def sum(self) -> Spectrum:
+        """Return the summed spectrum of the collection."""
+
+        from ramankit.core.operations import sum
+
+        return sum(self)
+
+    def std(self) -> Spectrum:
+        """Return the standard-deviation spectrum of the collection."""
+
+        from ramankit.core.operations import std
+
+        return std(self)
+
+    def __add__(self, other: SpectrumCollection | float | int) -> SpectrumCollection:
+        return self.add(other)
+
+    def __sub__(self, other: SpectrumCollection | float | int) -> SpectrumCollection:
+        return self.subtract(other)
+
+    def __mul__(self, other: SpectrumCollection | float | int) -> SpectrumCollection:
+        return self.multiply(other)
+
+    def __truediv__(self, other: SpectrumCollection | float | int) -> SpectrumCollection:
+        return self.divide(other)
+

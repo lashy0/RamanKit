@@ -5,15 +5,6 @@ from ramankit.core import (
     RamanImage,
     Spectrum,
     SpectrumCollection,
-    add,
-    divide,
-    flatten_image,
-    mean,
-    multiply,
-    stack_spectra,
-    std,
-    subtract,
-    sum,
 )
 
 __all__ = [
@@ -23,13 +14,4 @@ __all__ = [
     "RamanImage",
     "Spectrum",
     "SpectrumCollection",
-    "add",
-    "divide",
-    "flatten_image",
-    "mean",
-    "multiply",
-    "stack_spectra",
-    "std",
-    "subtract",
-    "sum",
 ]

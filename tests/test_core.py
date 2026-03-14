@@ -1,20 +1,11 @@
+"""Regression tests for the RamanKit core spectral models and methods."""
+
 from __future__ import annotations
 
 import numpy as np
 import pytest
 
-from ramankit import (
-    Metadata,
-    Provenance,
-    ProvenanceStep,
-    RamanImage,
-    Spectrum,
-    SpectrumCollection,
-    add,
-    flatten_image,
-    mean,
-    stack_spectra,
-)
+from ramankit import Metadata, RamanImage, Spectrum, SpectrumCollection
 
 
 def test_spectrum_raises_for_axis_shape_mismatch() -> None:
@@ -68,14 +59,14 @@ def test_collection_raises_for_axis_length_mismatch() -> None:
         )
 
 
-def test_stack_spectra_raises_for_axis_mismatch() -> None:
+def test_collection_from_spectra_raises_for_axis_mismatch() -> None:
     """Reject stacking spectra that do not share the same spectral axis."""
 
     left = Spectrum(axis=[100.0, 200.0], intensity=[1.0, 2.0], spectral_unit="cm^-1")
     right = Spectrum(axis=[100.0, 250.0], intensity=[1.0, 2.0], spectral_unit="cm^-1")
 
     with pytest.raises(ValueError, match="axes must match exactly"):
-        stack_spectra([left, right])
+        SpectrumCollection.from_spectra([left, right])
 
 
 def test_raman_image_raises_for_axis_length_mismatch() -> None:
@@ -88,28 +79,26 @@ def test_raman_image_raises_for_axis_length_mismatch() -> None:
         )
 
 
-def test_flatten_image_preserves_metadata_and_shape() -> None:
+def test_raman_image_flatten_preserves_metadata_and_shape() -> None:
     """Flatten images without losing metadata or provenance continuity."""
 
     metadata = Metadata(sample="sample-1", extras={"laser_nm": 785})
-    provenance = Provenance(steps=(ProvenanceStep(name="load"),))
     image = RamanImage(
         axis=[100.0, 200.0],
         intensity=np.arange(12.0).reshape(2, 3, 2),
         metadata=metadata,
-        provenance=provenance,
         spectral_axis_name="raman_shift",
         spectral_unit="cm^-1",
     )
 
-    flattened = flatten_image(image)
+    flattened = image.flatten()
 
     assert flattened.intensity.shape == (6, 2)
     assert flattened.metadata == metadata
     assert flattened.provenance.steps[-1].name == "flatten_image"
 
 
-def test_mean_returns_spectrum_for_collection() -> None:
+def test_collection_mean_returns_spectrum() -> None:
     """Reduce a collection to a mean spectrum with provenance preserved."""
 
     collection = SpectrumCollection(
@@ -119,14 +108,14 @@ def test_mean_returns_spectrum_for_collection() -> None:
         spectral_unit="cm^-1",
     )
 
-    averaged = mean(collection)
+    averaged = collection.mean()
 
     assert isinstance(averaged, Spectrum)
     assert np.allclose(averaged.intensity, [2.0, 3.0, 4.0])
     assert averaged.provenance.steps[-1].name == "mean"
 
 
-def test_add_raises_for_axis_metadata_mismatch() -> None:
+def test_spectrum_add_raises_for_axis_metadata_mismatch() -> None:
     """Reject arithmetic between spectra with incompatible axis semantics."""
 
     left = Spectrum(
@@ -143,7 +132,7 @@ def test_add_raises_for_axis_metadata_mismatch() -> None:
     )
 
     with pytest.raises(ValueError, match="axis names must match exactly"):
-        add(left, right)
+        left.add(right)
 
 
 def test_collection_slice_preserves_metadata() -> None:

@@ -77,3 +77,44 @@ class Spectrum:
             spectral_axis_name=self.spectral_axis_name,
             spectral_unit=self.spectral_unit,
         )
+
+    def add(self, other: Spectrum | float | int) -> Spectrum:
+        """Return the elementwise sum of this spectrum and an operand."""
+
+        from ramankit.core.operations import add
+
+        return add(self, other)
+
+    def subtract(self, other: Spectrum | float | int) -> Spectrum:
+        """Return the elementwise difference of this spectrum and an operand."""
+
+        from ramankit.core.operations import subtract
+
+        return subtract(self, other)
+
+    def multiply(self, other: Spectrum | float | int) -> Spectrum:
+        """Return the elementwise product of this spectrum and an operand."""
+
+        from ramankit.core.operations import multiply
+
+        return multiply(self, other)
+
+    def divide(self, other: Spectrum | float | int) -> Spectrum:
+        """Return the elementwise quotient of this spectrum and an operand."""
+
+        from ramankit.core.operations import divide
+
+        return divide(self, other)
+
+    def __add__(self, other: Spectrum | float | int) -> Spectrum:
+        return self.add(other)
+
+    def __sub__(self, other: Spectrum | float | int) -> Spectrum:
+        return self.subtract(other)
+
+    def __mul__(self, other: Spectrum | float | int) -> Spectrum:
+        return self.multiply(other)
+
+    def __truediv__(self, other: Spectrum | float | int) -> Spectrum:
+        return self.divide(other)
+

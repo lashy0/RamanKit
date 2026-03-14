@@ -7,7 +7,7 @@ import numpy as np
 from ramankit.core._validation import NumericArray, validate_axis_compatibility
 from ramankit.core.collection import SpectrumCollection
 from ramankit.core.image import RamanImage
-from ramankit.core.metadata import ProvenanceStep
+from ramankit.core.metadata import Provenance, ProvenanceStep
 from ramankit.core.spectrum import Spectrum
 
 SpectralData = Spectrum | SpectrumCollection | RamanImage
@@ -15,17 +15,7 @@ Reducer = Callable[..., NumericArray]
 
 
 def stack_spectra(spectra: list[Spectrum] | tuple[Spectrum, ...]) -> SpectrumCollection:
-    """Stack spectra with identical spectral axes into one collection.
-
-    Args:
-        spectra: Spectra to stack along a new batch dimension.
-
-    Returns:
-        A spectrum collection containing the stacked intensities.
-
-    Raises:
-        ValueError: If no spectra are provided or their axes do not match.
-    """
+    """Stack spectra with identical spectral axes into one collection."""
 
     if not spectra:
         raise ValueError("stack_spectra requires at least one spectrum.")
@@ -56,14 +46,7 @@ def stack_spectra(spectra: list[Spectrum] | tuple[Spectrum, ...]) -> SpectrumCol
 
 
 def flatten_image(image: RamanImage) -> SpectrumCollection:
-    """Flatten a Raman image into a spectrum collection.
-
-    Args:
-        image: Image to flatten over the spatial dimensions.
-
-    Returns:
-        A collection with one spectrum per image pixel.
-    """
+    """Flatten a Raman image into a spectrum collection."""
 
     height, width = image.spatial_shape
     flattened = image.intensity.reshape(height * width, image.n_points)
@@ -83,25 +66,37 @@ def flatten_image(image: RamanImage) -> SpectrumCollection:
     )
 
 
-def add(left: SpectralData, right: SpectralData | float | int) -> SpectralData:
+def add[T: (Spectrum, SpectrumCollection, RamanImage)](
+    left: T,
+    right: T | float | int,
+) -> T:
     """Return the elementwise sum of spectral data and an operand."""
 
     return _binary_operation(left, right, operator=np.add, operation_name="add")
 
 
-def subtract(left: SpectralData, right: SpectralData | float | int) -> SpectralData:
+def subtract[T: (Spectrum, SpectrumCollection, RamanImage)](
+    left: T,
+    right: T | float | int,
+) -> T:
     """Return the elementwise difference of spectral data and an operand."""
 
     return _binary_operation(left, right, operator=np.subtract, operation_name="subtract")
 
 
-def multiply(left: SpectralData, right: SpectralData | float | int) -> SpectralData:
+def multiply[T: (Spectrum, SpectrumCollection, RamanImage)](
+    left: T,
+    right: T | float | int,
+) -> T:
     """Return the elementwise product of spectral data and an operand."""
 
     return _binary_operation(left, right, operator=np.multiply, operation_name="multiply")
 
 
-def divide(left: SpectralData, right: SpectralData | float | int) -> SpectralData:
+def divide[T: (Spectrum, SpectrumCollection, RamanImage)](
+    left: T,
+    right: T | float | int,
+) -> T:
     """Return the elementwise quotient of spectral data and an operand."""
 
     return _binary_operation(left, right, operator=np.divide, operation_name="divide")
@@ -125,13 +120,13 @@ def std(data: SpectrumCollection | RamanImage) -> Spectrum:
     return _reduce_to_spectrum(data, reducer=np.std, operation_name="std")
 
 
-def _binary_operation(
-    left: SpectralData,
-    right: SpectralData | float | int,
+def _binary_operation[T: (Spectrum, SpectrumCollection, RamanImage)](
+    left: T,
+    right: T | float | int,
     *,
     operator: Callable[[NumericArray, NumericArray | float | int], NumericArray],
     operation_name: str,
-) -> SpectralData:
+) -> T:
     if isinstance(right, (Spectrum, SpectrumCollection, RamanImage)):
         _ensure_compatible_data(left, right)
         right_values: NumericArray | float | int = right.intensity
@@ -186,22 +181,35 @@ def _ensure_compatible_data(left: SpectralData, right: SpectralData) -> None:
         )
 
 
-def _rebuild_like(
-    template: SpectralData,
+def _rebuild_like[T: (Spectrum, SpectrumCollection, RamanImage)](
+    template: T,
     *,
     intensity: NumericArray,
-    provenance,
-) -> SpectralData:
-    common = {
-        "axis": template.axis,
-        "intensity": intensity,
-        "metadata": template.metadata,
-        "provenance": provenance,
-        "spectral_axis_name": template.spectral_axis_name,
-        "spectral_unit": template.spectral_unit,
-    }
+    provenance: Provenance,
+) -> T:
     if isinstance(template, Spectrum):
-        return Spectrum(**common)
+        return Spectrum(
+            axis=template.axis,
+            intensity=intensity,
+            metadata=template.metadata,
+            provenance=provenance,
+            spectral_axis_name=template.spectral_axis_name,
+            spectral_unit=template.spectral_unit,
+        )
     if isinstance(template, SpectrumCollection):
-        return SpectrumCollection(**common)
-    return RamanImage(**common)
+        return SpectrumCollection(
+            axis=template.axis,
+            intensity=intensity,
+            metadata=template.metadata,
+            provenance=provenance,
+            spectral_axis_name=template.spectral_axis_name,
+            spectral_unit=template.spectral_unit,
+        )
+    return RamanImage(
+        axis=template.axis,
+        intensity=intensity,
+        metadata=template.metadata,
+        provenance=provenance,
+        spectral_axis_name=template.spectral_axis_name,
+        spectral_unit=template.spectral_unit,
+    )
