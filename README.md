@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/lashy0/RamanKit/actions/workflows/ci.yml/badge.svg)](https://github.com/lashy0/RamanKit/actions/workflows/ci.yml)
 
-RamanKit is a Python library for Raman spectroscopy data processing and analysis. It provides a typed, scientifically explicit API for spectra, collections, hyperspectral Raman images, preprocessing pipelines, plotting helpers, and extensible I/O contracts.
+RamanKit is a Python library for Raman spectroscopy data processing and analysis. It provides a typed, scientifically explicit API for spectra, collections, hyperspectral Raman images, preprocessing pipelines, plotting helpers, peak analysis, and extensible I/O contracts.
 
 ## Package layout
 
@@ -85,6 +85,17 @@ pipeline = pp.Pipeline(
 processed = pipeline.apply(spectrum)
 ```
 
+### Peak analysis
+
+```python
+import ramankit.peaks.detect as rpd
+import ramankit.peaks.fit as rpf
+
+result = rpd.find_peaks(spectrum, prominence=0.5, width=1.0)
+peak = result[0]
+fit_result = rpf.fit_peak(spectrum, peak, window=(900.0, 1100.0), model="gaussian")
+```
+
 ### NPZ persistence
 
 ```python
@@ -135,6 +146,7 @@ docs/
 ├─ core.md             # core container semantics, metadata, and provenance
 ├─ preprocessing.md    # preprocessing steps, pipelines, and built-in operations
 ├─ io.md               # generic I/O contracts and built-in NPZ persistence
+├─ peaks.md            # peak detection and single-peak fitting
 ├─ plotting.md         # spectral and map plotting helpers
 └─ api-overview.md     # public imports and package layout
 ```

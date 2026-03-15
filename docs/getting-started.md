@@ -85,4 +85,6 @@ class MySpectrumLoader(BaseLoader[Spectrum]):
 - `core.md` for container semantics
 - `preprocessing.md` for step-based preprocessing
 - `io.md` for generic I/O extension points and NPZ persistence
+- `plotting.md` for module-level plotting helpers
+- `peaks.md` for peak detection and fitting
 - `api-overview.md` for public imports

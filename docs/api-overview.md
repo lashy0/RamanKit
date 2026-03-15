@@ -31,6 +31,15 @@ import ramankit.preprocessing as pp
 
 Use this package for step-based preprocessing and pipelines.
 
+## Peaks package
+
+```python
+import ramankit.peaks.detect as rpd
+import ramankit.peaks.fit as rpf
+```
+
+Use this package for peak detection and single-peak fitting on spectra.
+
 ## I/O package
 
 ```python
