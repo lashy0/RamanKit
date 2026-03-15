@@ -94,6 +94,7 @@ import ramankit.peaks.fit as rpf
 result = rpd.find_peaks(spectrum, prominence=0.5, width=1.0)
 peak = result[0]
 fit_result = rpf.fit_peak(spectrum, peak, window=(900.0, 1100.0), model="gaussian")
+multi_fit_result = rpf.fit_peaks(spectrum, peaks=result[:2], window=(900.0, 1100.0), model="gaussian")
 ```
 
 ### NPZ persistence
@@ -149,7 +150,7 @@ docs/
 ├─ core.md             # core container semantics, metadata, and provenance
 ├─ preprocessing.md    # preprocessing steps, pipelines, and built-in operations
 ├─ io.md               # generic I/O contracts and built-in NPZ persistence
-├─ peaks.md            # peak detection and single-peak fitting
+├─ peaks.md            # peak detection, single-peak fitting, and multi-peak fitting
 ├─ plotting.md         # spectral, peak, and map plotting helpers
 └─ api-overview.md     # public imports and package layout
 ```

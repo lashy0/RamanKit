@@ -38,6 +38,26 @@ fit_result = rpf.fit_peak(
 )
 ```
 
+## Multi-peak fitting
+
+Use `fit_peaks(...)` to fit multiple detected peaks simultaneously inside one shared window.
+
+```python
+multi_fit_result = rpf.fit_peaks(
+    spectrum,
+    peaks=result[:2],
+    window=(950.0, 1100.0),
+    model="gaussian",
+)
+```
+
+The multi-peak fit result includes:
+
+- one shared `offset`
+- fitted parameters for each component peak
+- one total fitted curve
+- one fitted curve per peak component
+
 Supported models in v1:
 
 - `gaussian`
@@ -47,4 +67,5 @@ Supported models in v1:
 
 - peak analysis in v1 supports only `Spectrum`
 - no preprocessing is performed implicitly before detection or fitting
-- fitting is limited to one detected peak at a time
+- `fit_peak(...)` is single-peak only
+- `fit_peaks(...)` uses one shared model type and one shared constant offset per fit window
