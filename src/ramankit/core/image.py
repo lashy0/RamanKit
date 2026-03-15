@@ -38,7 +38,20 @@ class RamanImage:
         spectral_axis_name: str | None = None,
         spectral_unit: str | None = None,
     ) -> None:
-        """Create a validated Raman image."""
+        """Create a validated Raman image.
+
+        Args:
+            axis: One-dimensional spectral axis shared by every pixel.
+            intensity: Three-dimensional intensity array of shape
+                ``(height, width, n_points)``.
+            metadata: Scientific metadata attached to the image.
+            provenance: Provenance describing how the image was created.
+            spectral_axis_name: Explicit semantic label for the spectral axis.
+            spectral_unit: Explicit unit for the spectral axis values.
+
+        Raises:
+            ValueError: If the axis or intensity arrays are invalid or incompatible.
+        """
 
         axis_array, axis_direction = coerce_axis(axis)
         intensity_array = coerce_intensity(intensity, ndim=3, label="RamanImage intensity")
@@ -162,4 +175,3 @@ class RamanImage:
 
     def __truediv__(self, other: RamanImage | float | int) -> RamanImage:
         return self.divide(other)
-

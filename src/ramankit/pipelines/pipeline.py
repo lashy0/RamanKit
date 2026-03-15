@@ -8,13 +8,25 @@ from ramankit.preprocessing._utils import apply_spectral_transform
 
 
 class PreprocessingStep:
-    """Base class for configured preprocessing steps."""
+    """Define one configured preprocessing transform.
+
+    Subclasses provide a concrete 1D spectral transform and metadata describing
+    the preprocessing family and method name used for provenance recording.
+    """
 
     function_name: ClassVar[str]
     method_name: ClassVar[str]
 
     def apply(self, data: SpectralDataT) -> SpectralDataT:
-        """Apply this preprocessing step to spectral data."""
+        """Apply this step to spectral data and return a new container.
+
+        Args:
+            data: A supported spectral container.
+
+        Returns:
+            A new container of the same type with updated intensity values and
+            one appended provenance step.
+        """
 
         return apply_spectral_transform(
             data,
@@ -34,13 +46,22 @@ class PreprocessingStep:
 
 
 class Pipeline:
-    """Apply a sequence of preprocessing steps to spectral data."""
+    """Apply a sequence of preprocessing steps in order."""
 
     def __init__(self, steps: Sequence[PreprocessingStep]) -> None:
+        """Create a preprocessing pipeline from configured steps."""
+
         self.steps = tuple(steps)
 
     def apply(self, data: SpectralDataT) -> SpectralDataT:
-        """Apply all configured preprocessing steps in order."""
+        """Apply all configured preprocessing steps in order.
+
+        Args:
+            data: A supported spectral container.
+
+        Returns:
+            A new container of the same type after all steps have been applied.
+        """
 
         result = data
         for step in self.steps:

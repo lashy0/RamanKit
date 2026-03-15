@@ -1,4 +1,4 @@
-"""Expose abstract I/O contracts for RamanKit."""
+"""Expose generic I/O extension points for RamanKit."""
 
 from ramankit.io.base import BaseLoader, BaseSaver
 

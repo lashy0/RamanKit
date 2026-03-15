@@ -17,7 +17,7 @@ from ramankit.core.spectrum import Spectrum
 
 @dataclass(frozen=True, slots=True, init=False)
 class SpectrumCollection:
-    """Represent a batch of spectra sharing one spectral axis."""
+    """Represent a batch of spectra that share one spectral axis."""
 
     axis: NumericArray
     intensity: NumericArray
@@ -37,7 +37,20 @@ class SpectrumCollection:
         spectral_axis_name: str | None = None,
         spectral_unit: str | None = None,
     ) -> None:
-        """Create a validated spectrum collection."""
+        """Create a validated spectrum collection.
+
+        Args:
+            axis: One-dimensional spectral axis shared by every spectrum.
+            intensity: Two-dimensional intensity array of shape
+                ``(n_spectra, n_points)``.
+            metadata: Scientific metadata attached to the collection.
+            provenance: Provenance describing how the collection was created.
+            spectral_axis_name: Explicit semantic label for the spectral axis.
+            spectral_unit: Explicit unit for the spectral axis values.
+
+        Raises:
+            ValueError: If the axis or intensity arrays are invalid or incompatible.
+        """
 
         axis_array, axis_direction = coerce_axis(axis)
         intensity_array = coerce_intensity(intensity, ndim=2, label="SpectrumCollection intensity")
@@ -84,7 +97,11 @@ class SpectrumCollection:
         return self.n_spectra
 
     def __getitem__(self, item: int | slice) -> Spectrum | SpectrumCollection:
-        """Return one spectrum or a sliced collection."""
+        """Return one spectrum or a sliced sub-collection.
+
+        Integer indexing returns a `Spectrum`. Slice indexing returns a new
+        `SpectrumCollection` that keeps the shared axis and metadata.
+        """
 
         subset = self.intensity[item]
         if subset.ndim == 1:
@@ -177,4 +194,3 @@ class SpectrumCollection:
 
     def __truediv__(self, other: SpectrumCollection | float | int) -> SpectrumCollection:
         return self.divide(other)
-

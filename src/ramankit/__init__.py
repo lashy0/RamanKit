@@ -1,3 +1,5 @@
+"""Expose the public RamanKit domain model API."""
+
 from ramankit.core import (
     Metadata,
     Provenance,
