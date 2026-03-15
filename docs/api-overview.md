@@ -39,6 +39,15 @@ from ramankit.io import BaseLoader, BaseSaver
 
 Use this package when implementing custom readers and writers.
 
+## Plotting package
+
+```python
+import ramankit.plotting.maps as rpm
+import ramankit.plotting.spectra as rps
+```
+
+Use this package for module-level plotting helpers for spectra and Raman maps.
+
 ## Pipelines package
 
 ```python

@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/lashy0/RamanKit/actions/workflows/ci.yml/badge.svg)](https://github.com/lashy0/RamanKit/actions/workflows/ci.yml)
 
-RamanKit is a Python library for Raman spectroscopy data processing and analysis. It provides a typed, scientifically explicit API for spectra, collections, hyperspectral Raman images, preprocessing pipelines, and extensible I/O contracts.
+RamanKit is a Python library for Raman spectroscopy data processing and analysis. It provides a typed, scientifically explicit API for spectra, collections, hyperspectral Raman images, preprocessing pipelines, plotting helpers, and extensible I/O contracts.
 
 ## Package layout
 
@@ -109,6 +109,24 @@ class MySpectrumLoader(BaseLoader[Spectrum]):
         raise NotImplementedError
 ```
 
+### Plotting
+
+```python
+import ramankit.plotting.maps as rpm
+import ramankit.plotting.spectra as rps
+
+from ramankit import RamanImage, Spectrum
+
+spectrum = Spectrum(axis=[100.0, 200.0, 300.0], intensity=[1.0, 2.0, 3.0])
+figure, axes = rps.plot_spectrum(spectrum)
+
+image = RamanImage(
+    axis=[100.0, 200.0, 300.0],
+    intensity=[[[1.0, 2.0, 3.0], [3.0, 4.0, 5.0]]],
+)
+map_figure, map_axes = rpm.plot_image_band(image, index=1)
+```
+
 ## Documentation
 
 ```text
@@ -117,6 +135,7 @@ docs/
 ├─ core.md             # core container semantics, metadata, and provenance
 ├─ preprocessing.md    # preprocessing steps, pipelines, and built-in operations
 ├─ io.md               # generic I/O contracts and built-in NPZ persistence
+├─ plotting.md         # spectral and map plotting helpers
 └─ api-overview.md     # public imports and package layout
 ```
 
