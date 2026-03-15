@@ -1,14 +1,15 @@
 # I/O abstractions
 
-RamanKit currently exposes generic extension points for file and directory I/O, but does not yet ship concrete readers or writers.
+RamanKit exposes generic extension points for file and directory I/O and ships one built-in persistence format for round-tripping existing containers.
 
 ## Public API
 
 ```python
 from ramankit.io import BaseLoader, BaseSaver
+from ramankit.io.npz import NPZLoader, NPZSaver
 ```
 
-## Loader contract
+## Generic contracts
 
 `BaseLoader[T]` defines one method:
 
@@ -17,14 +18,6 @@ def load(self, path: str | Path) -> T:
     ...
 ```
 
-`T` can be any supported core container:
-
-- `Spectrum`
-- `SpectrumCollection`
-- `RamanImage`
-
-## Saver contract
-
 `BaseSaver[T]` defines one method:
 
 ```python
@@ -32,7 +25,25 @@ def save(self, data: T, path: str | Path) -> None:
     ...
 ```
 
-## Example loader
+## Built-in NPZ format
+
+All core containers provide convenience methods for the built-in NPZ round-trip format.
+
+```python
+from ramankit import Spectrum
+
+spectrum = Spectrum(axis=[100.0, 200.0, 300.0], intensity=[1.0, 2.0, 3.0])
+spectrum.save("spectrum.npz")
+loaded = Spectrum.load("spectrum.npz")
+```
+
+Low-level access stays available through `ramankit.io.npz`:
+
+```python
+from ramankit.io.npz import NPZLoader, NPZSaver
+```
+
+## Example custom loader
 
 ```python
 from pathlib import Path
@@ -48,6 +59,7 @@ class MySpectrumLoader(BaseLoader[Spectrum]):
 
 ## Design intent
 
-The generic contracts exist so that concrete format support can be added without tying the public API to one vendor or one file layout too early.
-
-This also keeps read-side and write-side responsibilities separate.
+- generic contracts are the extension points for future formats
+- NPZ is the built-in persistence backend
+- read-side and write-side responsibilities remain separate
+- metadata and provenance are serialized explicitly without `pickle`

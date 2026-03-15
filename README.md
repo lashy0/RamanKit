@@ -2,7 +2,20 @@
 
 [![CI](https://github.com/lashy0/RamanKit/actions/workflows/ci.yml/badge.svg)](https://github.com/lashy0/RamanKit/actions/workflows/ci.yml)
 
-RamanKit is a Python library for Raman spectroscopy data processing and analysis. The current focus is a typed, scientifically explicit core API for spectra, collections, hyperspectral Raman images, preprocessing pipelines, and extensible I/O contracts.
+RamanKit is a Python library for Raman spectroscopy data processing and analysis. It provides a typed, scientifically explicit API for spectra, collections, hyperspectral Raman images, preprocessing pipelines, and extensible I/O contracts.
+
+## Package layout
+
+```text
+src/ramankit/
+├─ __init__.py          # public package exports
+├─ core/                # spectral domain models and metadata
+├─ io/                  # generic I/O contracts and persistence backends
+├─ peaks/               # peak analysis modules
+├─ pipelines/           # reusable preprocessing pipelines
+├─ plotting/            # plotting helpers
+└─ preprocessing/       # preprocessing steps and built-in operations
+```
 
 ## Installation
 
@@ -49,9 +62,9 @@ mean_spectrum = collection.mean()
 
 ```python
 import numpy as np
+import ramankit.preprocessing as pp
 
 from ramankit import Spectrum
-import ramankit.preprocessing as pp
 
 spectrum = Spectrum(
     axis=np.linspace(100.0, 1800.0, 9),
@@ -72,6 +85,16 @@ pipeline = pp.Pipeline(
 processed = pipeline.apply(spectrum)
 ```
 
+### NPZ persistence
+
+```python
+from ramankit import Spectrum
+
+spectrum = Spectrum(axis=[100.0, 200.0, 300.0], intensity=[1.0, 2.0, 3.0])
+spectrum.save("spectrum.npz")
+loaded = Spectrum.load("spectrum.npz")
+```
+
 ### Generic I/O contracts
 
 ```python
@@ -88,13 +111,14 @@ class MySpectrumLoader(BaseLoader[Spectrum]):
 
 ## Documentation
 
-Additional guides live in `docs/`:
-
-- `docs/getting-started.md`
-- `docs/core.md`
-- `docs/preprocessing.md`
-- `docs/io.md`
-- `docs/api-overview.md`
+```text
+docs/
+├─ getting-started.md  # installation, first objects, and the basic workflow
+├─ core.md             # core container semantics, metadata, and provenance
+├─ preprocessing.md    # preprocessing steps, pipelines, and built-in operations
+├─ io.md               # generic I/O contracts and built-in NPZ persistence
+└─ api-overview.md     # public imports and package layout
+```
 
 ## Development checks
 

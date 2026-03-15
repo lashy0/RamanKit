@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from pathlib import Path
 
 import numpy.typing as npt
 
@@ -64,6 +65,17 @@ class RamanImage:
         object.__setattr__(self, "spectral_axis_name", spectral_axis_name)
         object.__setattr__(self, "spectral_unit", spectral_unit)
         object.__setattr__(self, "axis_direction", axis_direction)
+
+    @classmethod
+    def load(cls, path: str | Path) -> RamanImage:
+        """Load one image from the built-in NPZ format."""
+
+        from ramankit.io.npz import NPZLoader
+
+        loaded = NPZLoader().load(path)
+        if not isinstance(loaded, cls):
+            raise ValueError(f"Expected {cls.__name__} in NPZ file; got {type(loaded).__name__}.")
+        return loaded
 
     @property
     def spatial_shape(self) -> tuple[int, int]:
@@ -142,6 +154,13 @@ class RamanImage:
         from ramankit.core.operations import divide
 
         return divide(self, other)
+
+    def save(self, path: str | Path) -> None:
+        """Persist this image in the built-in NPZ format."""
+
+        from ramankit.io.npz import NPZSaver
+
+        NPZSaver().save(self, path)
 
     def mean(self) -> Spectrum:
         """Return the mean spectrum of the image."""

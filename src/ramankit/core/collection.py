@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from pathlib import Path
 
 import numpy.typing as npt
 
@@ -78,6 +79,17 @@ class SpectrumCollection:
         from ramankit.core.operations import stack_spectra
 
         return stack_spectra(spectra)
+
+    @classmethod
+    def load(cls, path: str | Path) -> SpectrumCollection:
+        """Load one collection from the built-in NPZ format."""
+
+        from ramankit.io.npz import NPZLoader
+
+        loaded = NPZLoader().load(path)
+        if not isinstance(loaded, cls):
+            raise ValueError(f"Expected {cls.__name__} in NPZ file; got {type(loaded).__name__}.")
+        return loaded
 
     @property
     def n_spectra(self) -> int:
@@ -161,6 +173,13 @@ class SpectrumCollection:
         from ramankit.core.operations import divide
 
         return divide(self, other)
+
+    def save(self, path: str | Path) -> None:
+        """Persist this collection in the built-in NPZ format."""
+
+        from ramankit.io.npz import NPZSaver
+
+        NPZSaver().save(self, path)
 
     def mean(self) -> Spectrum:
         """Return the mean spectrum of the collection."""

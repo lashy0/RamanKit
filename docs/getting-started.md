@@ -1,10 +1,10 @@
 # Getting started
 
-RamanKit is currently designed around three layers:
+RamanKit is organized around three layers:
 
 - core domain models for spectral data
 - preprocessing steps applied through `.apply(...)`
-- generic I/O abstractions that concrete readers and writers can implement
+- generic and built-in I/O for persistence and format adapters
 
 ## Installation
 
@@ -55,9 +55,18 @@ pipeline = pp.Pipeline(
 processed = pipeline.apply(spectrum)
 ```
 
+## Built-in persistence workflow
+
+```python
+from ramankit import Spectrum
+
+spectrum.save("spectrum.npz")
+loaded = Spectrum.load("spectrum.npz")
+```
+
 ## I/O extension workflow
 
-RamanKit does not yet ship concrete readers. Instead, you implement a loader or saver on top of the generic contracts in `ramankit.io`.
+Vendor or text readers can be built on top of `ramankit.io`.
 
 ```python
 from pathlib import Path
@@ -70,3 +79,10 @@ class MySpectrumLoader(BaseLoader[Spectrum]):
     def load(self, path: str | Path) -> Spectrum:
         raise NotImplementedError
 ```
+
+## Next pages
+
+- `core.md` for container semantics
+- `preprocessing.md` for step-based preprocessing
+- `io.md` for generic I/O extension points and NPZ persistence
+- `api-overview.md` for public imports
