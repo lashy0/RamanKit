@@ -6,6 +6,7 @@ RamanKit keeps plotting separate from the core data model and exposes plotting a
 
 ```python
 import ramankit.plotting.maps as rpm
+import ramankit.plotting.peaks as rpp
 import ramankit.plotting.spectra as rps
 ```
 
@@ -24,6 +25,22 @@ Both helpers:
 - return `matplotlib` `Figure` and `Axes`
 - preserve the input data objects
 - label the spectral axis from `spectral_axis_name` and `spectral_unit` when available
+
+## Peak overlays
+
+Use `plot_detected_peaks(...)` to overlay detected peaks on a spectrum and `plot_peak_fit(...)`
+to show a single fitted peak on top of the full spectrum.
+
+```python
+figure, axes = rpp.plot_detected_peaks(spectrum, detection_result)
+figure, axes = rpp.plot_peak_fit(spectrum, peak, fit_result)
+```
+
+Peak plotting:
+
+- works only with typed `PeakDetectionResult`, `DetectedPeak`, and `PeakFitResult`
+- does not perform implicit preprocessing or fitting
+- shows the full spectrum and highlights the fit window for fitted peaks
 
 ## Raman maps
 

@@ -1,12 +1,11 @@
 from __future__ import annotations
 
-from typing import cast
-
 from matplotlib import pyplot as plt
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
 
 from ramankit.core.image import RamanImage
+from ramankit.plotting._utils import resolve_axes
 
 
 def plot_image_band(
@@ -26,7 +25,7 @@ def plot_image_band(
         raise ValueError("Expected exactly one of index or shift to be provided.")
 
     band_index = _resolve_band_index(image, index=index, shift=shift)
-    figure, axes = _resolve_axes(ax)
+    figure, axes = resolve_axes(ax)
     artist = axes.imshow(image.intensity[:, :, band_index], cmap=cmap)
     axes.set_xlabel("Column")
     axes.set_ylabel("Row")
@@ -54,10 +53,3 @@ def _resolve_band_index(
 
     assert shift is not None
     return int(abs(image.axis - shift).argmin())
-
-
-def _resolve_axes(ax: Axes | None) -> tuple[Figure, Axes]:
-    if ax is not None:
-        return cast(Figure, ax.figure), ax
-    figure, axes = plt.subplots()
-    return figure, axes

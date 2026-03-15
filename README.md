@@ -124,6 +124,7 @@ class MySpectrumLoader(BaseLoader[Spectrum]):
 
 ```python
 import ramankit.plotting.maps as rpm
+import ramankit.plotting.peaks as rpp
 import ramankit.plotting.spectra as rps
 
 from ramankit import RamanImage, Spectrum
@@ -136,6 +137,8 @@ image = RamanImage(
     intensity=[[[1.0, 2.0, 3.0], [3.0, 4.0, 5.0]]],
 )
 map_figure, map_axes = rpm.plot_image_band(image, index=1)
+peak_figure, peak_axes = rpp.plot_detected_peaks(spectrum, result)
+fit_figure, fit_axes = rpp.plot_peak_fit(spectrum, peak, fit_result)
 ```
 
 ## Documentation
@@ -147,7 +150,7 @@ docs/
 ├─ preprocessing.md    # preprocessing steps, pipelines, and built-in operations
 ├─ io.md               # generic I/O contracts and built-in NPZ persistence
 ├─ peaks.md            # peak detection and single-peak fitting
-├─ plotting.md         # spectral and map plotting helpers
+├─ plotting.md         # spectral, peak, and map plotting helpers
 └─ api-overview.md     # public imports and package layout
 ```
 

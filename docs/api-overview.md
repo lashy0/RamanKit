@@ -52,10 +52,11 @@ Use this package when implementing custom readers and writers.
 
 ```python
 import ramankit.plotting.maps as rpm
+import ramankit.plotting.peaks as rpp
 import ramankit.plotting.spectra as rps
 ```
 
-Use this package for module-level plotting helpers for spectra and Raman maps.
+Use this package for module-level plotting helpers for spectra, peaks, and Raman maps.
 
 ## Pipelines package
 
