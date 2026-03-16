@@ -22,7 +22,36 @@ import ramankit.preprocessing as pp
 
 ### Baseline
 
+Least-squares methods:
+
 - `pp.baseline.ASLS`
+- `pp.baseline.IASLS`
+- `pp.baseline.AIRPLS`
+- `pp.baseline.ARPLS`
+- `pp.baseline.DRPLS`
+- `pp.baseline.IARPLS`
+- `pp.baseline.ASPLS`
+
+Polynomial methods:
+
+- `pp.baseline.Poly`
+- `pp.baseline.ModPoly`
+- `pp.baseline.PenalisedPoly`
+- `pp.baseline.IModPoly`
+
+Other methods:
+
+- `pp.baseline.Goldindec`
+- `pp.baseline.IRSQR`
+- `pp.baseline.CornerCutting`
+- `pp.baseline.FABC`
+
+#### Method selection
+
+- Start with `ARPLS` or `ASLS` for general fluorescence backgrounds.
+- Use `AIRPLS` or `IARPLS` when peaks are strong and the baseline needs more robust reweighting.
+- Use `ModPoly` or `IModPoly` for simple polynomial-like backgrounds without tuning `lam`.
+- Use `IRSQR` or `FABC` when the background shape is difficult and a more specialized model helps.
 
 ### Despike
 
@@ -57,7 +86,7 @@ import ramankit.preprocessing as pp
 pipeline = pp.Pipeline(
     [
         pp.despike.WhitakerHayes(),
-        pp.baseline.ASLS(),
+        pp.baseline.ARPLS(),
         pp.smoothing.SavGol(window_length=5, polyorder=2),
         pp.normalization.Vector(),
     ]
