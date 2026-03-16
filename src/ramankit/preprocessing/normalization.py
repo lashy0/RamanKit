@@ -48,3 +48,19 @@ class Max(PreprocessingStep):
         if np.isclose(denominator, 0.0):
             raise ValueError("Expected max normalization denominator to be non-zero.")
         return intensity / denominator
+
+
+@dataclass(frozen=True, slots=True)
+class MinMax(PreprocessingStep):
+    """Min-max normalization step that maps each spectrum into the [0, 1] range."""
+
+    function_name = "normalize"
+    method_name = "minmax"
+
+    def _transform(self, intensity: Array1D, axis: Array1D) -> Array1D:
+        minimum = float(np.min(intensity))
+        maximum = float(np.max(intensity))
+        denominator = maximum - minimum
+        if np.isclose(denominator, 0.0):
+            raise ValueError("Expected min-max normalization denominator to be non-zero.")
+        return (intensity - minimum) / denominator

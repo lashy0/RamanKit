@@ -72,6 +72,7 @@ Other methods:
 - `pp.normalization.Vector`
 - `pp.normalization.Area`
 - `pp.normalization.Max`
+- `pp.normalization.MinMax`
 
 ### Miscellaneous
 
@@ -106,3 +107,4 @@ processed = pipeline.apply(spectrum)
 - preprocessing always works along the spectral axis
 - resampling is explicit; arithmetic and reductions do not auto-align axes
 - metadata is preserved and provenance is extended, not replaced
+

@@ -308,6 +308,45 @@ def test_max_apply_preserves_raman_image_type() -> None:
     assert np.isclose(np.max(normalized.intensity[0, 1]), 1.0)
 
 
+def test_minmax_apply_scales_spectrum_to_unit_interval() -> None:
+    """Scale a spectrum so its minimum is zero and its maximum is one."""
+
+    spectrum = Spectrum(axis=[100.0, 200.0, 300.0], intensity=[2.0, 5.0, 3.0])
+
+    normalized = pp.normalization.MinMax().apply(spectrum)
+
+    assert np.isclose(np.min(normalized.intensity), 0.0)
+    assert np.isclose(np.max(normalized.intensity), 1.0)
+    assert normalized.provenance.steps[-1].parameters["method"] == "minmax"
+
+
+def test_minmax_apply_preserves_raman_image_type() -> None:
+    """Normalize each image spectrum independently into the [0, 1] range."""
+
+    axis = np.linspace(100.0, 400.0, 4)
+    image = RamanImage(
+        axis=axis,
+        intensity=np.array([[[1.0, 3.0, 5.0, 2.0], [4.0, 6.0, 8.0, 5.0]]]),
+    )
+
+    normalized = pp.normalization.MinMax().apply(image)
+
+    assert isinstance(normalized, RamanImage)
+    assert np.isclose(np.min(normalized.intensity[0, 0]), 0.0)
+    assert np.isclose(np.max(normalized.intensity[0, 0]), 1.0)
+    assert np.isclose(np.min(normalized.intensity[0, 1]), 0.0)
+    assert np.isclose(np.max(normalized.intensity[0, 1]), 1.0)
+
+
+def test_minmax_apply_raises_for_zero_denominator() -> None:
+    """Reject min-max normalization for constant spectra."""
+
+    spectrum = Spectrum(axis=[100.0, 200.0, 300.0], intensity=[1.0, 1.0, 1.0])
+
+    with pytest.raises(ValueError, match="denominator"):
+        pp.normalization.MinMax().apply(spectrum)
+
+
 def test_vector_apply_raises_for_zero_denominator() -> None:
     """Reject normalization when the denominator is zero."""
 
@@ -485,6 +524,7 @@ def test_pipeline_applies_axis_changing_step_and_keeps_provenance_order() -> Non
 
     assert np.array_equal(processed.axis, np.array([150.0, 250.0, 350.0, 450.0]))
     assert [step.name for step in processed.provenance.steps[-2:]] == ["resample", "normalize"]
+
 
 
 
