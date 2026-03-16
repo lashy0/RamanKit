@@ -2,11 +2,12 @@ from __future__ import annotations
 
 import numpy as np
 import pytest
+from scipy.special import voigt_profile  # type: ignore[import-untyped]
 
 import ramankit.peaks.detect as rpd
 import ramankit.peaks.fit as rpf
 import ramankit.peaks.metrics as rpm
-from ramankit import Spectrum
+from ramankit import RamanImage, Spectrum, SpectrumCollection
 
 
 def _gaussian(
@@ -29,6 +30,18 @@ def _lorentzian(
     offset: float = 0.0,
 ) -> np.ndarray:
     return amplitude / (1.0 + ((axis - center) / width) ** 2) + offset
+
+
+def _voigt(
+    axis: np.ndarray,
+    *,
+    amplitude: float,
+    center: float,
+    sigma: float,
+    gamma: float,
+    offset: float = 0.0,
+) -> np.ndarray:
+    return amplitude * voigt_profile(axis - center, sigma, gamma) + offset
 
 
 def test_find_peaks_returns_typed_result_with_positions() -> None:
@@ -63,6 +76,56 @@ def test_find_peaks_returns_empty_result_when_no_peaks_exist() -> None:
     assert result.indices.size == 0
 
 
+def test_find_peaks_batch_returns_one_result_per_collection_spectrum() -> None:
+    """Detect peaks for every spectrum in a collection in collection order."""
+
+    axis = np.linspace(100.0, 300.0, 1001)
+    intensity = np.vstack(
+        [
+            _gaussian(axis, amplitude=4.0, center=140.0, width=5.0, offset=0.1),
+            _gaussian(axis, amplitude=5.0, center=220.0, width=7.0, offset=0.2),
+        ]
+    )
+    collection = SpectrumCollection(axis=axis, intensity=intensity)
+
+    result = rpd.find_peaks_batch(collection, prominence=0.5, width=1.0)
+
+    assert len(result) == 2
+    assert result[0][0].position == pytest.approx(140.0, abs=0.5)
+    assert result[1][0].position == pytest.approx(220.0, abs=0.5)
+
+
+def test_find_peaks_batch_flattens_raman_image_in_row_major_order() -> None:
+    """Detect peaks for every Raman image pixel in the flatten order used by RamanImage."""
+
+    axis = np.linspace(100.0, 300.0, 1001)
+    intensity = np.stack(
+        [
+            np.stack(
+                [
+                    _gaussian(axis, amplitude=4.0, center=130.0, width=5.0, offset=0.1),
+                    np.zeros_like(axis),
+                ]
+            ),
+            np.stack(
+                [
+                    _gaussian(axis, amplitude=5.0, center=210.0, width=6.0, offset=0.2),
+                    _gaussian(axis, amplitude=3.5, center=250.0, width=4.0, offset=0.2),
+                ]
+            ),
+        ]
+    )
+    image = RamanImage(axis=axis, intensity=intensity)
+
+    result = rpd.find_peaks_batch(image, prominence=0.5, width=1.0)
+
+    assert len(result) == 4
+    assert result[0][0].position == pytest.approx(130.0, abs=0.5)
+    assert len(result[1]) == 0
+    assert result[2][0].position == pytest.approx(210.0, abs=0.5)
+    assert result[3][0].position == pytest.approx(250.0, abs=0.5)
+
+
 def test_peak_metrics_return_detected_peak_properties() -> None:
     """Expose model-free metrics from one detected peak."""
 
@@ -91,6 +154,8 @@ def test_fit_peak_recovers_gaussian_parameters() -> None:
     assert result.center == pytest.approx(180.0, abs=0.05)
     assert result.amplitude == pytest.approx(4.0, rel=1e-2)
     assert result.width == pytest.approx(7.0, rel=1e-2)
+    assert result.sigma is None
+    assert result.gamma is None
     assert result.offset == pytest.approx(0.3, rel=1e-2)
     assert result.window_axis.shape == result.fitted_intensity.shape
 
@@ -109,7 +174,28 @@ def test_fit_peak_recovers_lorentzian_parameters() -> None:
     assert result.center == pytest.approx(220.0, abs=0.05)
     assert result.amplitude == pytest.approx(6.0, rel=1e-2)
     assert result.width == pytest.approx(5.0, rel=1e-2)
+    assert result.sigma is None
+    assert result.gamma is None
     assert result.offset == pytest.approx(0.4, rel=1e-2)
+
+
+def test_fit_peak_recovers_voigt_parameters() -> None:
+    """Fit one exact Voigt peak inside an explicit spectral window."""
+
+    axis = np.linspace(100.0, 300.0, 2001)
+    intensity = _voigt(axis, amplitude=40.0, center=185.0, sigma=2.5, gamma=3.5, offset=0.25)
+    spectrum = Spectrum(axis=axis, intensity=intensity)
+    peak = rpd.find_peaks(spectrum, prominence=0.1, width=1.0)[0]
+
+    result = rpf.fit_peak(spectrum, peak, window=(165.0, 205.0), model="voigt")
+
+    assert result.model == "voigt"
+    assert result.center == pytest.approx(185.0, abs=0.08)
+    assert result.amplitude == pytest.approx(40.0, rel=8e-2)
+    assert result.width is None
+    assert result.sigma == pytest.approx(2.5, rel=1.5e-1)
+    assert result.gamma == pytest.approx(3.5, rel=1.5e-1)
+    assert result.offset == pytest.approx(0.25, rel=5e-2)
 
 
 def test_fit_peaks_recovers_gaussian_components() -> None:
@@ -131,6 +217,8 @@ def test_fit_peaks_recovers_gaussian_components() -> None:
     assert result.components[0].center == pytest.approx(160.0, abs=0.1)
     assert result.components[0].amplitude == pytest.approx(5.0, rel=5e-2)
     assert result.components[0].width == pytest.approx(4.5, rel=5e-2)
+    assert result.components[0].sigma is None
+    assert result.components[0].gamma is None
     assert result.components[1].center == pytest.approx(172.0, abs=0.1)
     assert result.components[1].amplitude == pytest.approx(3.5, rel=5e-2)
     assert result.components[1].width == pytest.approx(4.0, rel=5e-2)
@@ -157,9 +245,39 @@ def test_fit_peaks_recovers_lorentzian_components() -> None:
     assert result.components[0].center == pytest.approx(210.0, abs=0.1)
     assert result.components[0].amplitude == pytest.approx(4.5, rel=5e-2)
     assert result.components[0].width == pytest.approx(4.0, rel=5e-2)
+    assert result.components[0].sigma is None
+    assert result.components[0].gamma is None
     assert result.components[1].center == pytest.approx(222.0, abs=0.1)
     assert result.components[1].amplitude == pytest.approx(3.0, rel=5e-2)
     assert result.components[1].width == pytest.approx(5.0, rel=5e-2)
+
+
+def test_fit_peaks_recovers_voigt_components() -> None:
+    """Fit overlapping Voigt peaks inside one shared spectral window."""
+
+    axis = np.linspace(100.0, 300.0, 3001)
+    intensity = (
+        _voigt(axis, amplitude=35.0, center=205.0, sigma=2.0, gamma=3.0, offset=0.2)
+        + _voigt(axis, amplitude=28.0, center=216.0, sigma=2.5, gamma=2.0)
+    )
+    spectrum = Spectrum(axis=axis, intensity=intensity)
+    peaks = tuple(rpd.find_peaks(spectrum, prominence=0.05, width=1.0, distance=80.0))
+
+    result = rpf.fit_peaks(spectrum, peaks, window=(194.0, 226.0), model="voigt")
+
+    assert result.model == "voigt"
+    assert len(result.components) == 2
+    assert result.offset == pytest.approx(0.2, rel=8e-2)
+    assert result.components[0].center == pytest.approx(205.0, abs=0.15)
+    assert result.components[0].amplitude == pytest.approx(35.0, rel=1.5e-1)
+    assert result.components[0].width is None
+    assert result.components[0].sigma == pytest.approx(2.0, rel=1.5e-1)
+    assert result.components[0].gamma == pytest.approx(3.0, rel=1.5e-1)
+    assert result.components[1].center == pytest.approx(216.0, abs=0.15)
+    assert result.components[1].amplitude == pytest.approx(28.0, rel=1.5e-1)
+    assert result.components[1].width is None
+    assert result.components[1].sigma == pytest.approx(2.5, rel=1.5e-1)
+    assert result.components[1].gamma == pytest.approx(2.0, rel=1.5e-1)
 
 
 def test_fit_peak_raises_for_invalid_window() -> None:
@@ -202,7 +320,7 @@ def test_fit_peaks_raises_for_invalid_inputs() -> None:
         rpf.fit_peaks(spectrum, tiny_window_peaks, window=(159.95, 160.15), model="gaussian")
 
     with pytest.raises(ValueError, match="Unsupported peak model"):
-        rpf.fit_peaks(spectrum, peaks, window=(148.0, 184.0), model="voigt")
+        rpf.fit_peaks(spectrum, peaks, window=(148.0, 184.0), model="invalid")  # type: ignore[arg-type]
 
 
 def test_fit_peak_raises_for_unsupported_model() -> None:
@@ -214,4 +332,5 @@ def test_fit_peak_raises_for_unsupported_model() -> None:
     peak = rpd.find_peaks(spectrum, prominence=0.5)[0]
 
     with pytest.raises(ValueError, match="Unsupported peak model"):
-        rpf.fit_peak(spectrum, peak, window=(160.0, 200.0), model="voigt")
+        rpf.fit_peak(spectrum, peak, window=(160.0, 200.0), model="invalid")  # type: ignore[arg-type]
+

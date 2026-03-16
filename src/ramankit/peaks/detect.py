@@ -2,11 +2,14 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 from dataclasses import dataclass
+from typing import cast
 
 import numpy as np
 import numpy.typing as npt
 from scipy.signal import find_peaks as scipy_find_peaks  # type: ignore[import-untyped]
 
+from ramankit.core.collection import SpectrumCollection
+from ramankit.core.image import RamanImage
 from ramankit.core.spectrum import Spectrum
 
 
@@ -104,6 +107,34 @@ def find_peaks(
         for index in range(peak_indices.size)
     )
     return PeakDetectionResult(peaks=peaks)
+
+
+def find_peaks_batch(
+    data: SpectrumCollection | RamanImage,
+    *,
+    height: float | tuple[float, float] | None = None,
+    prominence: float | tuple[float, float] | None = None,
+    width: float | tuple[float, float] | None = None,
+    distance: float | None = None,
+    threshold: float | tuple[float, float] | None = None,
+) -> list[PeakDetectionResult]:
+    """Detect peaks for every spectrum in a collection or flattened Raman image."""
+
+    collection = data.flatten() if isinstance(data, RamanImage) else data
+    results: list[PeakDetectionResult] = []
+    for index in range(collection.n_spectra):
+        spectrum = cast(Spectrum, collection[index])
+        results.append(
+            find_peaks(
+                spectrum,
+                height=height,
+                prominence=prominence,
+                width=width,
+                distance=distance,
+                threshold=threshold,
+            )
+        )
+    return results
 
 
 def _optional_float_array(

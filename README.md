@@ -88,7 +88,7 @@ processed = pipeline.apply(spectrum)
 Baseline correction includes least-squares (`ASLS`, `ARPLS`, `IARPLS`, `ASPLS`),
 polynomial (`Poly`, `ModPoly`, `PenalisedPoly`, `IModPoly`), and additional
 methods such as `Goldindec`, `IRSQR`, `CornerCutting`, and `FABC`.
-Smoothing includes `SavGol`, `Whittaker`, and `Gaussian`.
+Smoothing includes `SavGol`, `Whittaker`, and `Gaussian`. Normalization includes `Vector`, `Area`, `Max`, and `MinMax`.
 
 ### Peak analysis
 
@@ -98,8 +98,9 @@ import ramankit.peaks.fit as rpf
 
 result = rpd.find_peaks(spectrum, prominence=0.5, width=1.0)
 peak = result[0]
-fit_result = rpf.fit_peak(spectrum, peak, window=(900.0, 1100.0), model="gaussian")
-multi_fit_result = rpf.fit_peaks(spectrum, peaks=result[:2], window=(900.0, 1100.0), model="gaussian")
+batch_results = rpd.find_peaks_batch(collection, prominence=0.5, width=1.0)
+fit_result = rpf.fit_peak(spectrum, peak, window=(900.0, 1100.0), model="voigt")
+multi_fit_result = rpf.fit_peaks(spectrum, peaks=result[:2], window=(900.0, 1100.0), model="voigt")
 ```
 
 ### NPZ persistence
@@ -167,5 +168,7 @@ uv run pytest
 uv run ruff check .
 uv run mypy src
 ```
+
+
 
 

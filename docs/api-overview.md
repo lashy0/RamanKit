@@ -38,7 +38,7 @@ import ramankit.peaks.detect as rpd
 import ramankit.peaks.fit as rpf
 ```
 
-Use this package for peak detection and single-peak fitting on spectra.
+Use this package for peak detection, batch peak detection, and peak fitting on spectra.
 
 ## I/O package
 
@@ -65,3 +65,4 @@ from ramankit.pipelines import Pipeline, PreprocessingStep
 ```
 
 This package contains the reusable pipeline and preprocessing-step abstractions behind the preprocessing namespace.
+

@@ -18,6 +18,15 @@ result = rpd.find_peaks(spectrum, prominence=0.5, width=1.0)
 peak = result[0]
 ```
 
+Use `find_peaks_batch(...)` on a `SpectrumCollection` or `RamanImage`.
+
+```python
+batch_results = rpd.find_peaks_batch(collection, prominence=0.5, width=1.0)
+image_results = rpd.find_peaks_batch(image, prominence=0.5, width=1.0)
+```
+
+For `RamanImage`, the returned list is flat and follows the row-major order produced by `image.flatten()`.
+
 The detection result is typed and exposes:
 
 - sampled indices
@@ -47,7 +56,7 @@ multi_fit_result = rpf.fit_peaks(
     spectrum,
     peaks=result[:2],
     window=(950.0, 1100.0),
-    model="gaussian",
+    model="voigt",
 )
 ```
 
@@ -58,14 +67,18 @@ The multi-peak fit result includes:
 - one total fitted curve
 - one fitted curve per peak component
 
-Supported models in v1:
+Supported models:
 
 - `gaussian`
 - `lorentzian`
+- `voigt` via `scipy.special.voigt_profile`
+
+For `gaussian` and `lorentzian`, fit results expose `width`. For `voigt`, fit results expose `sigma` and `gamma` instead.
 
 ## Notes
 
-- peak analysis in v1 supports only `Spectrum`
+- peak detection supports `Spectrum`, `SpectrumCollection`, and `RamanImage`
+- peak fitting supports `Spectrum`
 - no preprocessing is performed implicitly before detection or fitting
 - `fit_peak(...)` is single-peak only
 - `fit_peaks(...)` uses one shared model type and one shared constant offset per fit window
