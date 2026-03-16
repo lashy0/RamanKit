@@ -14,24 +14,14 @@ import ramankit.peaks.detect as rpd
 import ramankit.peaks.fit as rpf
 import ramankit.plotting.peaks as rpp
 from ramankit import Spectrum
-
-
-def _gaussian(
-    axis: np.ndarray,
-    *,
-    amplitude: float,
-    center: float,
-    width: float,
-    offset: float = 0.0,
-) -> np.ndarray:
-    return amplitude * np.exp(-0.5 * ((axis - center) / width) ** 2) + offset
+from tests._synthetic_helpers import gaussian
 
 
 def test_plot_detected_peaks_returns_figure_and_peak_markers() -> None:
     """Overlay detected peak markers on top of one spectrum."""
 
     axis = np.linspace(100.0, 300.0, 1001)
-    intensity = _gaussian(axis, amplitude=5.0, center=160.0, width=6.0, offset=0.2)
+    intensity = gaussian(axis, amplitude=5.0, center=160.0, width=6.0, offset=0.2)
     spectrum = Spectrum(
         axis=axis,
         intensity=intensity,
@@ -54,7 +44,7 @@ def test_plot_peak_fit_returns_full_spectrum_fit_and_window() -> None:
     """Render the full spectrum, the fit window, and the fitted peak curve."""
 
     axis = np.linspace(100.0, 300.0, 1001)
-    intensity = _gaussian(axis, amplitude=5.0, center=180.0, width=7.0, offset=0.3)
+    intensity = gaussian(axis, amplitude=5.0, center=180.0, width=7.0, offset=0.3)
     spectrum = Spectrum(
         axis=axis,
         intensity=intensity,
@@ -79,8 +69,8 @@ def test_plot_peak_fit_raises_for_peak_outside_fit_window() -> None:
 
     axis = np.linspace(100.0, 300.0, 1001)
     intensity = (
-        _gaussian(axis, amplitude=5.0, center=150.0, width=5.0, offset=0.2)
-        + _gaussian(axis, amplitude=4.0, center=230.0, width=6.0)
+        gaussian(axis, amplitude=5.0, center=150.0, width=5.0, offset=0.2)
+        + gaussian(axis, amplitude=4.0, center=230.0, width=6.0)
     )
     spectrum = Spectrum(axis=axis, intensity=intensity)
     detection_result = rpd.find_peaks(spectrum, prominence=0.5)
@@ -90,3 +80,4 @@ def test_plot_peak_fit_raises_for_peak_outside_fit_window() -> None:
 
     with pytest.raises(ValueError, match="fall inside the fitted window"):
         rpp.plot_peak_fit(spectrum, second_peak, fit_result)
+

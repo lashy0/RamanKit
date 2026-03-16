@@ -10,10 +10,11 @@ from ramankit import (
     RamanImage,
     Spectrum,
     SpectrumCollection,
+    synthetic,
 )
 ```
 
-The top-level package intentionally exports only the core domain models.
+The top-level package intentionally exports the core domain models plus the synthetic-data namespace.
 
 ## Core package
 
@@ -66,3 +67,10 @@ from ramankit.pipelines import Pipeline, PreprocessingStep
 
 This package contains the reusable pipeline and preprocessing-step abstractions behind the preprocessing namespace.
 
+## Synthetic package
+
+```python
+import ramankit.synthetic as rsyn
+```
+
+Use this package for synthetic spectra, collections, and Raman image generation from explicit peak, baseline, and noise parameters.

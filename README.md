@@ -14,7 +14,8 @@ src/ramankit/
 ├─ peaks/               # peak analysis modules
 ├─ pipelines/           # reusable preprocessing pipelines
 ├─ plotting/            # plotting helpers
-└─ preprocessing/       # preprocessing steps and built-in operations
+├─ preprocessing/       # preprocessing steps and built-in operations
+└─ synthetic/           # synthetic spectra, collections, and image generation
 ```
 
 ## Installation
@@ -103,6 +104,27 @@ fit_result = rpf.fit_peak(spectrum, peak, window=(900.0, 1100.0), model="voigt")
 multi_fit_result = rpf.fit_peaks(spectrum, peaks=result[:2], window=(900.0, 1100.0), model="voigt")
 ```
 
+### Synthetic data
+
+```python
+import numpy as np
+import ramankit.synthetic as rsyn
+
+spectrum = rsyn.generate_spectrum(
+    axis=np.linspace(100.0, 300.0, 201),
+    config=rsyn.SyntheticSpectrumConfig(
+        peaks=(
+            rsyn.PeakComponent(amplitude=5.0, center=160.0, width=6.0),
+            rsyn.PeakComponent(model="lorentzian", amplitude=3.0, center=220.0, width=5.0),
+        ),
+        baseline=rsyn.LinearBaseline(offset=0.2, slope=0.001),
+        noise=rsyn.GaussianNoise(sigma=0.05, seed=7),
+    ),
+    spectral_axis_name="raman_shift",
+    spectral_unit="cm^-1",
+)
+```
+
 ### NPZ persistence
 
 ```python
@@ -158,6 +180,7 @@ docs/
 ├─ io.md               # generic I/O contracts and built-in NPZ persistence
 ├─ peaks.md            # peak detection, single-peak fitting, and multi-peak fitting
 ├─ plotting.md         # spectral, peak, and map plotting helpers
+├─ synthetic.md        # synthetic spectrum, collection, and image generation
 └─ api-overview.md     # public imports and package layout
 ```
 

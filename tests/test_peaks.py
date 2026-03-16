@@ -2,46 +2,12 @@ from __future__ import annotations
 
 import numpy as np
 import pytest
-from scipy.special import voigt_profile  # type: ignore[import-untyped]
 
 import ramankit.peaks.detect as rpd
 import ramankit.peaks.fit as rpf
 import ramankit.peaks.metrics as rpm
 from ramankit import RamanImage, Spectrum, SpectrumCollection
-
-
-def _gaussian(
-    axis: np.ndarray,
-    *,
-    amplitude: float,
-    center: float,
-    width: float,
-    offset: float = 0.0,
-) -> np.ndarray:
-    return amplitude * np.exp(-0.5 * ((axis - center) / width) ** 2) + offset
-
-
-def _lorentzian(
-    axis: np.ndarray,
-    *,
-    amplitude: float,
-    center: float,
-    width: float,
-    offset: float = 0.0,
-) -> np.ndarray:
-    return amplitude / (1.0 + ((axis - center) / width) ** 2) + offset
-
-
-def _voigt(
-    axis: np.ndarray,
-    *,
-    amplitude: float,
-    center: float,
-    sigma: float,
-    gamma: float,
-    offset: float = 0.0,
-) -> np.ndarray:
-    return amplitude * voigt_profile(axis - center, sigma, gamma) + offset
+from tests._synthetic_helpers import gaussian, lorentzian, voigt
 
 
 def test_find_peaks_returns_typed_result_with_positions() -> None:
@@ -49,8 +15,8 @@ def test_find_peaks_returns_typed_result_with_positions() -> None:
 
     axis = np.linspace(100.0, 300.0, 1001)
     intensity = (
-        _gaussian(axis, amplitude=5.0, center=130.0, width=4.0, offset=0.2)
-        + _gaussian(axis, amplitude=3.5, center=230.0, width=6.0)
+        gaussian(axis, amplitude=5.0, center=130.0, width=4.0, offset=0.2)
+        + gaussian(axis, amplitude=3.5, center=230.0, width=6.0)
     )
     spectrum = Spectrum(axis=axis, intensity=intensity)
 
@@ -82,8 +48,8 @@ def test_find_peaks_batch_returns_one_result_per_collection_spectrum() -> None:
     axis = np.linspace(100.0, 300.0, 1001)
     intensity = np.vstack(
         [
-            _gaussian(axis, amplitude=4.0, center=140.0, width=5.0, offset=0.1),
-            _gaussian(axis, amplitude=5.0, center=220.0, width=7.0, offset=0.2),
+            gaussian(axis, amplitude=4.0, center=140.0, width=5.0, offset=0.1),
+            gaussian(axis, amplitude=5.0, center=220.0, width=7.0, offset=0.2),
         ]
     )
     collection = SpectrumCollection(axis=axis, intensity=intensity)
@@ -103,14 +69,14 @@ def test_find_peaks_batch_flattens_raman_image_in_row_major_order() -> None:
         [
             np.stack(
                 [
-                    _gaussian(axis, amplitude=4.0, center=130.0, width=5.0, offset=0.1),
+                    gaussian(axis, amplitude=4.0, center=130.0, width=5.0, offset=0.1),
                     np.zeros_like(axis),
                 ]
             ),
             np.stack(
                 [
-                    _gaussian(axis, amplitude=5.0, center=210.0, width=6.0, offset=0.2),
-                    _gaussian(axis, amplitude=3.5, center=250.0, width=4.0, offset=0.2),
+                    gaussian(axis, amplitude=5.0, center=210.0, width=6.0, offset=0.2),
+                    gaussian(axis, amplitude=3.5, center=250.0, width=4.0, offset=0.2),
                 ]
             ),
         ]
@@ -130,7 +96,7 @@ def test_peak_metrics_return_detected_peak_properties() -> None:
     """Expose model-free metrics from one detected peak."""
 
     axis = np.linspace(100.0, 300.0, 1001)
-    intensity = _gaussian(axis, amplitude=5.0, center=180.0, width=5.0, offset=0.1)
+    intensity = gaussian(axis, amplitude=5.0, center=180.0, width=5.0, offset=0.1)
     spectrum = Spectrum(axis=axis, intensity=intensity)
     peak = rpd.find_peaks(spectrum, prominence=0.5, width=1.0)[0]
 
@@ -144,7 +110,7 @@ def test_fit_peak_recovers_gaussian_parameters() -> None:
     """Fit one Gaussian peak inside an explicit spectral window."""
 
     axis = np.linspace(100.0, 300.0, 1001)
-    intensity = _gaussian(axis, amplitude=4.0, center=180.0, width=7.0, offset=0.3)
+    intensity = gaussian(axis, amplitude=4.0, center=180.0, width=7.0, offset=0.3)
     spectrum = Spectrum(axis=axis, intensity=intensity)
     peak = rpd.find_peaks(spectrum, prominence=0.5)[0]
 
@@ -164,7 +130,7 @@ def test_fit_peak_recovers_lorentzian_parameters() -> None:
     """Fit one Lorentzian peak inside an explicit spectral window."""
 
     axis = np.linspace(100.0, 300.0, 1001)
-    intensity = _lorentzian(axis, amplitude=6.0, center=220.0, width=5.0, offset=0.4)
+    intensity = lorentzian(axis, amplitude=6.0, center=220.0, width=5.0, offset=0.4)
     spectrum = Spectrum(axis=axis, intensity=intensity)
     peak = rpd.find_peaks(spectrum, prominence=0.5)[0]
 
@@ -183,7 +149,7 @@ def test_fit_peak_recovers_voigt_parameters() -> None:
     """Fit one exact Voigt peak inside an explicit spectral window."""
 
     axis = np.linspace(100.0, 300.0, 2001)
-    intensity = _voigt(axis, amplitude=40.0, center=185.0, sigma=2.5, gamma=3.5, offset=0.25)
+    intensity = voigt(axis, amplitude=40.0, center=185.0, sigma=2.5, gamma=3.5, offset=0.25)
     spectrum = Spectrum(axis=axis, intensity=intensity)
     peak = rpd.find_peaks(spectrum, prominence=0.1, width=1.0)[0]
 
@@ -203,8 +169,8 @@ def test_fit_peaks_recovers_gaussian_components() -> None:
 
     axis = np.linspace(100.0, 300.0, 2001)
     intensity = (
-        _gaussian(axis, amplitude=5.0, center=160.0, width=4.5, offset=0.3)
-        + _gaussian(axis, amplitude=3.5, center=172.0, width=4.0)
+        gaussian(axis, amplitude=5.0, center=160.0, width=4.5, offset=0.3)
+        + gaussian(axis, amplitude=3.5, center=172.0, width=4.0)
     )
     spectrum = Spectrum(axis=axis, intensity=intensity)
     peaks = tuple(rpd.find_peaks(spectrum, prominence=0.2, width=1.0))
@@ -231,8 +197,8 @@ def test_fit_peaks_recovers_lorentzian_components() -> None:
 
     axis = np.linspace(100.0, 300.0, 2001)
     intensity = (
-        _lorentzian(axis, amplitude=4.5, center=210.0, width=4.0, offset=0.25)
-        + _lorentzian(axis, amplitude=3.0, center=222.0, width=5.0)
+        lorentzian(axis, amplitude=4.5, center=210.0, width=4.0, offset=0.25)
+        + lorentzian(axis, amplitude=3.0, center=222.0, width=5.0)
     )
     spectrum = Spectrum(axis=axis, intensity=intensity)
     peaks = tuple(rpd.find_peaks(spectrum, prominence=0.2, width=1.0))
@@ -257,8 +223,8 @@ def test_fit_peaks_recovers_voigt_components() -> None:
 
     axis = np.linspace(100.0, 300.0, 3001)
     intensity = (
-        _voigt(axis, amplitude=35.0, center=205.0, sigma=2.0, gamma=3.0, offset=0.2)
-        + _voigt(axis, amplitude=28.0, center=216.0, sigma=2.5, gamma=2.0)
+        voigt(axis, amplitude=35.0, center=205.0, sigma=2.0, gamma=3.0, offset=0.2)
+        + voigt(axis, amplitude=28.0, center=216.0, sigma=2.5, gamma=2.0)
     )
     spectrum = Spectrum(axis=axis, intensity=intensity)
     peaks = tuple(rpd.find_peaks(spectrum, prominence=0.05, width=1.0, distance=80.0))
@@ -284,7 +250,7 @@ def test_fit_peak_raises_for_invalid_window() -> None:
     """Reject windows that exclude the peak or contain too few samples."""
 
     axis = np.linspace(100.0, 300.0, 1001)
-    intensity = _gaussian(axis, amplitude=4.0, center=180.0, width=7.0, offset=0.3)
+    intensity = gaussian(axis, amplitude=4.0, center=180.0, width=7.0, offset=0.3)
     spectrum = Spectrum(axis=axis, intensity=intensity)
     peak = rpd.find_peaks(spectrum, prominence=0.5)[0]
 
@@ -300,8 +266,8 @@ def test_fit_peaks_raises_for_invalid_inputs() -> None:
 
     axis = np.linspace(100.0, 300.0, 2001)
     intensity = (
-        _gaussian(axis, amplitude=5.0, center=160.0, width=4.5, offset=0.3)
-        + _gaussian(axis, amplitude=3.5, center=172.0, width=4.0)
+        gaussian(axis, amplitude=5.0, center=160.0, width=4.5, offset=0.3)
+        + gaussian(axis, amplitude=3.5, center=172.0, width=4.0)
     )
     spectrum = Spectrum(axis=axis, intensity=intensity)
     peaks = tuple(rpd.find_peaks(spectrum, prominence=0.2, width=1.0))
@@ -327,10 +293,13 @@ def test_fit_peak_raises_for_unsupported_model() -> None:
     """Reject unsupported line-shape models in the fitting API."""
 
     axis = np.linspace(100.0, 300.0, 1001)
-    intensity = _gaussian(axis, amplitude=4.0, center=180.0, width=7.0, offset=0.3)
+    intensity = gaussian(axis, amplitude=4.0, center=180.0, width=7.0, offset=0.3)
     spectrum = Spectrum(axis=axis, intensity=intensity)
     peak = rpd.find_peaks(spectrum, prominence=0.5)[0]
 
     with pytest.raises(ValueError, match="Unsupported peak model"):
         rpf.fit_peak(spectrum, peak, window=(160.0, 200.0), model="invalid")  # type: ignore[arg-type]
+
+
+
 
