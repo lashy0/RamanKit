@@ -60,6 +60,12 @@ Other methods:
 ### Smoothing
 
 - `pp.smoothing.SavGol`
+- `pp.smoothing.Whittaker`
+- `pp.smoothing.Gaussian`
+
+- `SavGol` for local polynomial smoothing with explicit window control.
+- `Whittaker` for one-parameter smoothness control via `lam`.
+- `Gaussian` for simple sigma-based smoothing.
 
 ### Normalization
 
@@ -87,7 +93,7 @@ pipeline = pp.Pipeline(
     [
         pp.despike.WhitakerHayes(),
         pp.baseline.ARPLS(),
-        pp.smoothing.SavGol(window_length=5, polyorder=2),
+        pp.smoothing.Whittaker(lam=1e3),
         pp.normalization.Vector(),
     ]
 )

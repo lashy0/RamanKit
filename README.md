@@ -88,6 +88,7 @@ processed = pipeline.apply(spectrum)
 Baseline correction includes least-squares (`ASLS`, `ARPLS`, `IARPLS`, `ASPLS`),
 polynomial (`Poly`, `ModPoly`, `PenalisedPoly`, `IModPoly`), and additional
 methods such as `Goldindec`, `IRSQR`, `CornerCutting`, and `FABC`.
+Smoothing includes `SavGol`, `Whittaker`, and `Gaussian`.
 
 ### Peak analysis
 
@@ -166,4 +167,5 @@ uv run pytest
 uv run ruff check .
 uv run mypy src
 ```
+
 

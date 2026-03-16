@@ -3,6 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 import numpy as np
+from pybaselines import Baseline  # type: ignore[import-untyped]
+from scipy.ndimage import gaussian_filter1d  # type: ignore[import-untyped]
 from scipy.signal import savgol_filter  # type: ignore[import-untyped]
 
 from ramankit.pipelines.pipeline import PreprocessingStep
@@ -52,6 +54,61 @@ class SavGol(PreprocessingStep):
             ),
             dtype=np.float64,
         )
+
+
+@dataclass(frozen=True, slots=True)
+class Whittaker(PreprocessingStep):
+    """Whittaker-like smoothing via symmetric ASLS weighting."""
+
+    function_name = "smooth"
+    method_name = "whittaker"
+
+    lam: float = 1e3
+
+    def __post_init__(self) -> None:
+        """Validate the configured smoothing strength."""
+
+        if self.lam <= 0:
+            raise ValueError("Expected lam to be positive.")
+
+    def parameters(self) -> dict[str, object]:
+        return {"lam": self.lam}
+
+    def _transform(self, intensity: Array1D, axis: Array1D) -> Array1D:
+        return _whittaker_smooth(intensity, axis, lam=self.lam)
+
+
+@dataclass(frozen=True, slots=True)
+class Gaussian(PreprocessingStep):
+    """Gaussian smoothing step."""
+
+    function_name = "smooth"
+    method_name = "gaussian"
+
+    sigma: float = 1.0
+
+    def __post_init__(self) -> None:
+        """Validate the configured Gaussian width."""
+
+        if self.sigma <= 0:
+            raise ValueError("Expected sigma to be positive.")
+
+    def parameters(self) -> dict[str, object]:
+        return {"sigma": self.sigma}
+
+    def _transform(self, intensity: Array1D, axis: Array1D) -> Array1D:
+        return np.asarray(
+            gaussian_filter1d(intensity, sigma=self.sigma, mode="nearest"),
+            dtype=np.float64,
+        )
+
+
+def _whittaker_smooth(intensity: Array1D, axis: Array1D, *, lam: float) -> Array1D:
+    """Return a Whittaker-like smoother via symmetric ASLS weighting."""
+
+    baseline_fitter = Baseline(x_data=axis)
+    smoothed, _ = baseline_fitter.asls(intensity, lam=lam, p=0.5)
+    return np.asarray(smoothed, dtype=np.float64)
 
 
 def _validate_savgol_parameters(
