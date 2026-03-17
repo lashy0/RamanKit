@@ -8,7 +8,7 @@ from scipy.ndimage import gaussian_filter1d  # type: ignore[import-untyped]
 from scipy.signal import savgol_filter  # type: ignore[import-untyped]
 
 from ramankit.pipelines.pipeline import PreprocessingStep
-from ramankit.preprocessing._types import Array1D
+from ramankit.preprocessing._types import Array1D, Array2D
 
 
 @dataclass(frozen=True, slots=True)
@@ -51,6 +51,29 @@ class SavGol(PreprocessingStep):
                 deriv=self.deriv,
                 delta=delta_value,
                 mode=self.mode,
+            ),
+            dtype=np.float64,
+        )
+
+    def _transform_batch(self, intensity: Array2D, axis: Array1D) -> Array2D | None:
+        _validate_savgol_parameters(
+            window_length=self.window_length,
+            polyorder=self.polyorder,
+            deriv=self.deriv,
+            n_points=intensity.shape[-1],
+        )
+        delta_value = self.delta
+        if self.deriv > 0 and axis.shape[0] > 1:
+            delta_value = float(np.mean(np.abs(np.diff(axis))))
+        return np.asarray(
+            savgol_filter(
+                intensity,
+                window_length=self.window_length,
+                polyorder=self.polyorder,
+                deriv=self.deriv,
+                delta=delta_value,
+                mode=self.mode,
+                axis=-1,
             ),
             dtype=np.float64,
         )
@@ -99,6 +122,12 @@ class Gaussian(PreprocessingStep):
     def _transform(self, intensity: Array1D, axis: Array1D) -> Array1D:
         return np.asarray(
             gaussian_filter1d(intensity, sigma=self.sigma, mode="nearest"),
+            dtype=np.float64,
+        )
+
+    def _transform_batch(self, intensity: Array2D, axis: Array1D) -> Array2D | None:
+        return np.asarray(
+            gaussian_filter1d(intensity, sigma=self.sigma, mode="nearest", axis=-1),
             dtype=np.float64,
         )
 

@@ -7,7 +7,7 @@ import numpy as np
 from pybaselines import Baseline  # type: ignore[import-untyped]
 
 from ramankit.pipelines.pipeline import PreprocessingStep
-from ramankit.preprocessing._types import Array1D
+from ramankit.preprocessing._types import Array1D, Array2D
 
 
 def _resolve_baseline_method(method_name: str):
@@ -94,6 +94,20 @@ class BaselineStep(PreprocessingStep):
             **self._backend_parameters(axis),
         )
         return intensity - baseline
+
+    def _transform_batch(self, intensity: Array2D, axis: Array1D) -> Array2D | None:
+        """Apply the configured pybaselines method across one batch sharing an axis."""
+
+        baseline_fitter = Baseline(x_data=axis)
+        method = getattr(baseline_fitter, self.method_name)
+        parameters = self._backend_parameters(axis)
+        corrected = np.empty_like(intensity)
+
+        for index, row in enumerate(intensity):
+            baseline, _ = method(row, **parameters)
+            corrected[index] = row - baseline
+
+        return corrected
 
     def _scalar_parameters(self) -> dict[str, object]:
         """Return non-axis-dependent parameters for eager validation."""

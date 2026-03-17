@@ -11,9 +11,11 @@ from ramankit.core.metadata import Provenance, ProvenanceStep
 from ramankit.core.spectrum import Spectrum
 from ramankit.preprocessing._types import (
     AxisTransform1D,
+    AxisTransform2D,
     FloatArray,
     SpectralDataT,
     Transform1D,
+    Transform2D,
 )
 
 
@@ -21,6 +23,7 @@ def apply_spectral_transform(
     data: SpectralDataT,
     *,
     transform: Transform1D,
+    batch_transform: Transform2D | None = None,
     function_name: str,
     method: str,
     parameters: Mapping[str, object],
@@ -36,18 +39,29 @@ def apply_spectral_transform(
         )
     else:
         flattened = data.intensity.reshape(-1, data.n_points)
-        intensity = np.stack(
-            [
-                _transform_row(
-                    row,
-                    data.axis,
-                    transform=transform,
-                    function_name=function_name,
-                )
-                for row in flattened
-            ],
-            axis=0,
-        ).reshape(data.intensity.shape)
+        transformed_batch = None
+        if batch_transform is not None:
+            transformed_batch = batch_transform(flattened, data.axis)
+
+        if transformed_batch is None:
+            intensity = np.stack(
+                [
+                    _transform_row(
+                        row,
+                        data.axis,
+                        transform=transform,
+                        function_name=function_name,
+                    )
+                    for row in flattened
+                ],
+                axis=0,
+            ).reshape(data.intensity.shape)
+        else:
+            intensity = _validate_batch_transform(
+                transformed_batch,
+                expected_shape=flattened.shape,
+                function_name=function_name,
+            ).reshape(data.intensity.shape)
 
     provenance = data.provenance.append(
         build_provenance_step(function_name=function_name, method=method, parameters=parameters)
@@ -59,6 +73,7 @@ def apply_axis_transform(
     data: SpectralDataT,
     *,
     transform: AxisTransform1D,
+    batch_transform: AxisTransform2D | None = None,
     function_name: str,
     method: str,
     parameters: Mapping[str, object],
@@ -74,23 +89,36 @@ def apply_axis_transform(
         )
     else:
         flattened = data.intensity.reshape(-1, data.n_points)
-        transformed_rows = [
-            _transform_with_axis(
-                row,
-                data.axis,
-                transform=transform,
+        transformed_batch = None
+        if batch_transform is not None:
+            transformed_batch = batch_transform(flattened, data.axis)
+
+        if transformed_batch is None:
+            transformed_rows = [
+                _transform_with_axis(
+                    row,
+                    data.axis,
+                    transform=transform,
+                    function_name=function_name,
+                )
+                for row in flattened
+            ]
+            axis = _validate_shared_axis(
+                [transformed_axis for transformed_axis, _ in transformed_rows],
                 function_name=function_name,
             )
-            for row in flattened
-        ]
-        axis = _validate_shared_axis(
-            [transformed_axis for transformed_axis, _ in transformed_rows],
-            function_name=function_name,
-        )
-        intensity = np.stack(
-            [transformed_intensity for _, transformed_intensity in transformed_rows],
-            axis=0,
-        ).reshape(*data.intensity.shape[:-1], axis.shape[0])
+            intensity = np.stack(
+                [transformed_intensity for _, transformed_intensity in transformed_rows],
+                axis=0,
+            ).reshape(*data.intensity.shape[:-1], axis.shape[0])
+        else:
+            axis, transformed_intensity = transformed_batch
+            axis = _validate_transformed_axis(axis, function_name=function_name)
+            intensity = _validate_batch_transform(
+                transformed_intensity,
+                expected_shape=(flattened.shape[0], axis.shape[0]),
+                function_name=function_name,
+            ).reshape(*data.intensity.shape[:-1], axis.shape[0])
 
     provenance = data.provenance.append(
         build_provenance_step(function_name=function_name, method=method, parameters=parameters)
@@ -212,6 +240,30 @@ def _validate_shared_axis(
         if not np.array_equal(axis, reference):
             raise ValueError(f"{function_name} must return the same axis for every spectrum.")
     return reference
+
+
+def _validate_batch_transform(
+    transformed: FloatArray,
+    *,
+    expected_shape: tuple[int, int],
+    function_name: str,
+) -> FloatArray:
+    transformed_array = np.array(transformed, dtype=np.float64, copy=True)
+    if transformed_array.ndim != 2:
+        raise ValueError(f"{function_name} must return 2D intensity data for batch transforms.")
+    if transformed_array.shape != expected_shape:
+        raise ValueError(
+            f"{function_name} must preserve the input intensity shape for batch transforms; "
+            f"got {transformed_array.shape} instead of {expected_shape}."
+        )
+    if not np.all(np.isfinite(transformed_array)):
+        raise ValueError(f"{function_name} must return only finite intensity values.")
+    return transformed_array
+
+
+def _validate_transformed_axis(axis: FloatArray, *, function_name: str) -> FloatArray:
+    axis_array, _ = coerce_axis(axis)
+    return axis_array
 
 
 def _serialize_parameters(parameters: Mapping[str, object]) -> dict[str, object]:

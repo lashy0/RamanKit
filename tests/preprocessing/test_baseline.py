@@ -5,7 +5,8 @@ import pytest
 
 import ramankit.preprocessing as pp
 import ramankit.synthetic as rsyn
-from ramankit import Metadata, Provenance, ProvenanceStep, RamanImage, Spectrum
+from ramankit import Metadata, Provenance, ProvenanceStep, RamanImage, Spectrum, SpectrumCollection
+from tests._test_helpers import apply_collection_row_by_row, apply_image_pixel_by_pixel
 
 BASELINE_STEPS = [
     ("asls", pp.baseline.ASLS),
@@ -186,3 +187,92 @@ def test_baseline_steps_validate_array_parameter_shapes() -> None:
 
     with pytest.raises(ValueError, match="alpha"):
         pp.baseline.ASPLS(alpha=np.ones(5)).apply(spectrum)
+
+
+@pytest.mark.parametrize(
+    "step",
+    [
+        pp.baseline.ASLS(lam=1e5, p=1e-2, max_iter=20),
+        pp.baseline.AIRPLS(lam=1e5, max_iter=20),
+        pp.baseline.Poly(poly_order=2),
+    ],
+)
+def test_baseline_batch_path_matches_row_by_row_for_collection(step: pp.PreprocessingStep) -> None:
+    """Batch baseline correction should match per-spectrum application on collections."""
+
+    axis = np.linspace(100.0, 400.0, 81)
+    positions = np.linspace(0.0, 1.0, axis.shape[0])
+    collection = SpectrumCollection(
+        axis=axis,
+        intensity=np.array(
+            [
+                0.4 + 0.5 * positions + 3.0 * np.exp(-((axis - 220.0) ** 2) / (2 * 10.0**2)),
+                0.6 + 0.3 * positions + 2.0 * np.exp(-((axis - 300.0) ** 2) / (2 * 14.0**2)),
+                0.5
+                + 0.4 * positions
+                + 1.5 * np.exp(-((axis - 180.0) ** 2) / (2 * 8.0**2))
+                + 1.2 * np.exp(-((axis - 330.0) ** 2) / (2 * 12.0**2)),
+            ],
+            dtype=np.float64,
+        ),
+        spectral_axis_name="raman_shift",
+        spectral_unit="cm^-1",
+    )
+
+    corrected = step.apply(collection)
+    expected = apply_collection_row_by_row(step, collection)
+
+    assert isinstance(corrected, SpectrumCollection)
+    assert corrected.intensity.shape == collection.intensity.shape
+    assert np.array_equal(corrected.axis, collection.axis)
+    assert corrected.provenance.steps[-1].name == "baseline_correct"
+    assert corrected.provenance.steps[-1].parameters["method"] == step.method_name
+    assert np.allclose(corrected.intensity, expected.intensity)
+
+
+@pytest.mark.parametrize(
+    "step",
+    [
+        pp.baseline.ASLS(lam=1e5, p=1e-2, max_iter=20),
+        pp.baseline.AIRPLS(lam=1e5, max_iter=20),
+        pp.baseline.Poly(poly_order=2),
+    ],
+)
+def test_baseline_batch_path_matches_row_by_row_for_image(step: pp.PreprocessingStep) -> None:
+    """Batch baseline correction should match per-pixel application on Raman images."""
+
+    axis = np.linspace(100.0, 400.0, 81)
+    positions = np.linspace(0.0, 1.0, axis.shape[0])
+    image = RamanImage(
+        axis=axis,
+        intensity=np.array(
+            [
+                [
+                    0.4 + 0.5 * positions + 3.0 * np.exp(-((axis - 220.0) ** 2) / (2 * 10.0**2)),
+                    0.6 + 0.3 * positions + 2.0 * np.exp(-((axis - 300.0) ** 2) / (2 * 14.0**2)),
+                ],
+                [
+                    0.5
+                    + 0.4 * positions
+                    + 1.5 * np.exp(-((axis - 180.0) ** 2) / (2 * 8.0**2))
+                    + 1.2 * np.exp(-((axis - 330.0) ** 2) / (2 * 12.0**2)),
+                    0.45
+                    + 0.35 * positions
+                    + 2.3 * np.exp(-((axis - 260.0) ** 2) / (2 * 11.0**2)),
+                ],
+            ],
+            dtype=np.float64,
+        ),
+        spectral_axis_name="raman_shift",
+        spectral_unit="cm^-1",
+    )
+
+    corrected = step.apply(image)
+    expected = apply_image_pixel_by_pixel(step, image)
+
+    assert isinstance(corrected, RamanImage)
+    assert corrected.intensity.shape == image.intensity.shape
+    assert np.array_equal(corrected.axis, image.axis)
+    assert corrected.provenance.steps[-1].name == "baseline_correct"
+    assert corrected.provenance.steps[-1].parameters["method"] == step.method_name
+    assert np.allclose(corrected.intensity, expected.intensity)

@@ -5,6 +5,7 @@ import pytest
 
 import ramankit.preprocessing as pp
 from ramankit import RamanImage, Spectrum, SpectrumCollection
+from tests._test_helpers import apply_collection_row_by_row, apply_image_pixel_by_pixel
 
 
 def test_savgol_apply_returns_collection_with_same_axis() -> None:
@@ -102,3 +103,82 @@ def test_smoothing_steps_reduce_local_variation(step: pp.PreprocessingStep) -> N
     original_variation = np.sum(np.abs(np.diff(spectrum.intensity)))
     smoothed_variation = np.sum(np.abs(np.diff(smoothed.intensity)))
     assert smoothed_variation < original_variation
+
+
+
+
+@pytest.mark.parametrize(
+    "step",
+    [
+        pp.smoothing.SavGol(window_length=5, polyorder=2),
+        pp.smoothing.Gaussian(sigma=1.0),
+    ],
+)
+def test_smoothing_batch_path_matches_row_by_row_for_collection(step: pp.PreprocessingStep) -> None:
+    """Batch smoothing should match per-spectrum application on collections."""
+
+    axis = np.linspace(500.0, 100.0, 9)
+    collection = SpectrumCollection(
+        axis=axis,
+        intensity=np.array(
+            [
+                [0.0, 1.0, 2.0, 4.0, 7.0, 4.0, 2.0, 1.0, 0.0],
+                [1.0, 2.0, 3.0, 6.0, 8.0, 5.0, 3.0, 2.0, 1.0],
+                [0.5, 1.5, 1.0, 3.0, 5.0, 3.0, 1.0, 1.5, 0.5],
+            ],
+            dtype=np.float64,
+        ),
+        spectral_axis_name="raman_shift",
+        spectral_unit="cm^-1",
+    )
+
+    batch_result = step.apply(collection)
+    expected = apply_collection_row_by_row(step, collection)
+
+    assert isinstance(batch_result, SpectrumCollection)
+    assert np.array_equal(batch_result.axis, collection.axis)
+    assert batch_result.provenance.steps[-1].name == step.function_name
+    assert batch_result.provenance.steps[-1].parameters["method"] == step.method_name
+    assert np.allclose(batch_result.intensity, expected.intensity)
+
+
+@pytest.mark.parametrize(
+    "step",
+    [
+        pp.smoothing.SavGol(window_length=5, polyorder=2),
+        pp.smoothing.Gaussian(sigma=1.0),
+    ],
+)
+def test_smoothing_batch_path_matches_row_by_row_for_image(step: pp.PreprocessingStep) -> None:
+    """Batch smoothing should match per-pixel application on Raman images."""
+
+    axis = np.linspace(500.0, 100.0, 9)
+    image = RamanImage(
+        axis=axis,
+        intensity=np.array(
+            [
+                [
+                    [0.0, 1.0, 2.0, 4.0, 7.0, 4.0, 2.0, 1.0, 0.0],
+                    [1.0, 2.0, 3.0, 6.0, 8.0, 5.0, 3.0, 2.0, 1.0],
+                ],
+                [
+                    [0.5, 1.5, 1.0, 3.0, 5.0, 3.0, 1.0, 1.5, 0.5],
+                    [1.0, 1.5, 2.5, 4.0, 6.0, 4.0, 2.5, 1.5, 1.0],
+                ],
+            ],
+            dtype=np.float64,
+        ),
+        spectral_axis_name="raman_shift",
+        spectral_unit="cm^-1",
+    )
+
+    batch_result = step.apply(image)
+    expected = apply_image_pixel_by_pixel(step, image)
+
+    assert isinstance(batch_result, RamanImage)
+    assert np.array_equal(batch_result.axis, image.axis)
+    assert batch_result.provenance.steps[-1].name == step.function_name
+    assert batch_result.provenance.steps[-1].parameters["method"] == step.method_name
+    assert np.allclose(batch_result.intensity, expected.intensity)
+
+

@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import ClassVar
 
-from ramankit.preprocessing._types import Array1D, SpectralDataT
+from ramankit.preprocessing._types import Array1D, Array2D, SpectralDataT
 from ramankit.preprocessing._utils import apply_spectral_transform
 
 
@@ -31,6 +31,7 @@ class PreprocessingStep:
         return apply_spectral_transform(
             data,
             transform=self._transform,
+            batch_transform=self._transform_batch,
             function_name=self.function_name,
             method=self.method_name,
             parameters=self.parameters(),
@@ -43,6 +44,16 @@ class PreprocessingStep:
 
     def _transform(self, intensity: Array1D, axis: Array1D) -> Array1D:
         raise NotImplementedError
+
+    def _transform_batch(self, intensity: Array2D, axis: Array1D) -> Array2D | None:
+        return None
+
+    def _transform_batch_with_axis(
+        self,
+        intensity: Array2D,
+        axis: Array1D,
+    ) -> tuple[Array1D, Array2D] | None:
+        return None
 
 
 class Pipeline:

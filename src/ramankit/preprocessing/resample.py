@@ -38,6 +38,7 @@ class Linear(PreprocessingStep):
         return apply_axis_transform(
             data,
             transform=self._transform_with_axis,
+            batch_transform=self._transform_batch_with_axis,
             function_name=self.function_name,
             method=self.method_name,
             parameters={"target_axis": target_axis},
