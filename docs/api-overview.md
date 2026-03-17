@@ -14,7 +14,7 @@ from ramankit import (
 )
 ```
 
-The top-level package intentionally exports the core domain models plus the synthetic-data namespace.
+The top-level package intentionally exports the core domain models plus the metrics and synthetic namespaces.
 
 ## Core package
 
@@ -49,6 +49,15 @@ from ramankit.io import BaseLoader, BaseSaver
 
 Use this package when implementing custom readers and writers.
 
+## Metrics package
+
+```python
+import ramankit.metrics as rm
+```
+
+Use this package for spectral similarity (`cosine_similarity`,
+`pearson_correlation`, `mse`) and general quality metrics (`snr`, `band_area`)
+across spectra, collections, and Raman images.
 ## Plotting package
 
 ```python
@@ -74,3 +83,4 @@ import ramankit.synthetic as rsyn
 ```
 
 Use this package for synthetic spectra, collections, and Raman image generation from explicit peak, baseline, and noise parameters.
+

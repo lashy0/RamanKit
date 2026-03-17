@@ -1,6 +1,6 @@
 """Expose the public RamanKit domain model API."""
 
-from ramankit import synthetic
+from ramankit import metrics, synthetic
 from ramankit.core import (
     Metadata,
     Provenance,
@@ -12,6 +12,7 @@ from ramankit.core import (
 
 __all__ = [
     "Metadata",
+    "metrics",
     "Provenance",
     "ProvenanceStep",
     "RamanImage",
@@ -19,3 +20,4 @@ __all__ = [
     "SpectrumCollection",
     "synthetic",
 ]
+
