@@ -44,6 +44,44 @@ def test_generate_spectrum_returns_spectrum_with_metadata_and_provenance() -> No
     assert spectrum.spectral_unit == "cm^-1"
 
 
+def test_generate_spectrum_supports_polynomial_baseline() -> None:
+    """Generate one synthetic spectrum with a polynomial baseline."""
+
+    axis = np.linspace(100.0, 140.0, 5)
+    config = rsyn.SyntheticSpectrumConfig(
+        peaks=(rsyn.PeakComponent(amplitude=2.0, center=120.0, width=4.0),),
+        baseline=rsyn.PolynomialBaseline(coefficients=(0.5, 0.1, 0.01)),
+    )
+
+    spectrum = rsyn.generate_spectrum(axis, config)
+
+    shifted_axis = axis - axis[0]
+    expected = gaussian(axis, amplitude=2.0, center=120.0, width=4.0) + (
+        0.5 + 0.1 * shifted_axis + 0.01 * shifted_axis**2
+    )
+
+    assert np.allclose(spectrum.intensity, expected)
+
+
+def test_generate_spectrum_supports_exponential_baseline() -> None:
+    """Generate one synthetic spectrum with an exponential baseline."""
+
+    axis = np.linspace(100.0, 140.0, 5)
+    config = rsyn.SyntheticSpectrumConfig(
+        peaks=(rsyn.PeakComponent(amplitude=2.0, center=120.0, width=4.0),),
+        baseline=rsyn.ExponentialBaseline(amplitude=0.4, rate=0.05, offset=0.2),
+    )
+
+    spectrum = rsyn.generate_spectrum(axis, config)
+
+    shifted_axis = axis - axis[0]
+    expected = gaussian(axis, amplitude=2.0, center=120.0, width=4.0) + (
+        0.2 + 0.4 * np.exp(0.05 * shifted_axis)
+    )
+
+    assert np.allclose(spectrum.intensity, expected)
+
+
 def test_generate_spectrum_supports_voigt_components() -> None:
     """Generate one synthetic spectrum with a Voigt peak profile."""
 
@@ -174,6 +212,29 @@ def test_peak_component_raises_for_missing_model_parameters() -> None:
         rsyn.PeakComponent(model="voigt", amplitude=2.0, center=120.0)
 
 
+def test_polynomial_baseline_raises_for_invalid_coefficients() -> None:
+    """Reject empty or non-finite polynomial baseline coefficients."""
+
+    with pytest.raises(ValueError, match="at least one term"):
+        rsyn.PolynomialBaseline(coefficients=())
+
+    with pytest.raises(ValueError, match="finite values"):
+        rsyn.PolynomialBaseline(coefficients=(1.0, np.inf))
+
+
+def test_exponential_baseline_raises_for_non_finite_parameters() -> None:
+    """Reject non-finite exponential baseline parameters."""
+
+    with pytest.raises(ValueError, match="amplitude"):
+        rsyn.ExponentialBaseline(amplitude=np.nan, rate=0.1)
+
+    with pytest.raises(ValueError, match="rate"):
+        rsyn.ExponentialBaseline(amplitude=1.0, rate=np.inf)
+
+    with pytest.raises(ValueError, match="offset"):
+        rsyn.ExponentialBaseline(amplitude=1.0, rate=0.1, offset=np.nan)
+
+
 def test_generate_image_raises_for_ragged_config_rows() -> None:
     """Reject image config grids whose rows have inconsistent widths."""
 
@@ -184,4 +245,3 @@ def test_generate_image_raises_for_ragged_config_rows() -> None:
 
     with pytest.raises(ValueError, match="same width"):
         rsyn.generate_image(axis, [[config, config], [config]])
-

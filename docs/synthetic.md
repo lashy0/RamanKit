@@ -19,7 +19,7 @@ spectrum = rsyn.generate_spectrum(
             rsyn.PeakComponent(amplitude=5.0, center=160.0, width=6.0),
             rsyn.PeakComponent(model="voigt", amplitude=8.0, center=220.0, sigma=2.0, gamma=3.0),
         ),
-        baseline=rsyn.LinearBaseline(offset=0.2, slope=0.001),
+        baseline=rsyn.PolynomialBaseline(coefficients=(0.2, 0.001, 2e-6)),
         noise=rsyn.GaussianNoise(sigma=0.05, seed=7),
     ),
     spectral_axis_name="raman_shift",
@@ -69,6 +69,7 @@ image = rsyn.generate_image(
 
 - The spectral axis is always provided explicitly by the caller.
 - Peak models currently support `gaussian`, `lorentzian`, and `voigt`.
-- `LinearBaseline` adds `offset + slope * (axis - axis[0])`.
+- `LinearBaseline` adds `offset + slope * (axis - axis[0])`.`r`n- `PolynomialBaseline` evaluates coefficients in ascending order on `(axis - axis[0])`.`r`n- `ExponentialBaseline` adds `offset + amplitude * exp(rate * (axis - axis[0]))`.
 - `GaussianNoise` is additive and reproducible when `seed` is set.
 - Generated data is marked with `provenance.source == "synthetic"`.
+

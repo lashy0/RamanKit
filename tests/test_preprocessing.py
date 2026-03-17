@@ -4,6 +4,7 @@ import numpy as np
 import pytest
 
 import ramankit.preprocessing as pp
+import ramankit.synthetic as rsyn
 from ramankit import Metadata, Provenance, ProvenanceStep, RamanImage, Spectrum, SpectrumCollection
 
 BASELINE_STEPS = [
@@ -24,21 +25,46 @@ BASELINE_STEPS = [
     ("fabc", pp.baseline.FABC),
 ]
 
+SYNTHETIC_BASELINE_CASES = [
+    (
+        "polynomial",
+        rsyn.SyntheticSpectrumConfig(
+            peaks=(
+                rsyn.PeakComponent(amplitude=3.0, center=210.0, width=12.0),
+                rsyn.PeakComponent(amplitude=2.2, center=300.0, width=16.0),
+            ),
+            baseline=rsyn.PolynomialBaseline(coefficients=(0.6, 3e-3, 1e-5)),
+        ),
+    ),
+    (
+        "exponential",
+        rsyn.SyntheticSpectrumConfig(
+            peaks=(
+                rsyn.PeakComponent(amplitude=3.0, center=210.0, width=12.0),
+                rsyn.PeakComponent(amplitude=2.2, center=300.0, width=16.0),
+            ),
+            baseline=rsyn.ExponentialBaseline(amplitude=0.5, rate=4e-3, offset=0.6),
+        ),
+    ),
+]
+
 
 @pytest.mark.parametrize(("method", "step_cls"), BASELINE_STEPS)
+@pytest.mark.parametrize(("case_name", "config"), SYNTHETIC_BASELINE_CASES)
 def test_baseline_steps_apply_preserve_spectrum_metadata_and_type(
     method: str,
     step_cls: type[pp.PreprocessingStep],
+    case_name: str,
+    config: rsyn.SyntheticSpectrumConfig,
 ) -> None:
     """Return a corrected spectrum while preserving metadata and provenance."""
 
     metadata = Metadata(sample="sample-1")
     provenance = Provenance(steps=(ProvenanceStep(name="load"),))
-    axis = np.linspace(100.0, 400.0, 11)
-    intensity = 0.02 * axis + np.array([0.0, 0.0, 0.1, 0.4, 1.2, 2.5, 1.2, 0.4, 0.1, 0.0, 0.0])
-    spectrum = Spectrum(
+    axis = np.linspace(100.0, 400.0, 121)
+    spectrum = rsyn.generate_spectrum(
         axis=axis,
-        intensity=intensity,
+        config=config,
         metadata=metadata,
         provenance=provenance,
         spectral_axis_name="raman_shift",
@@ -52,8 +78,8 @@ def test_baseline_steps_apply_preserve_spectrum_metadata_and_type(
     assert corrected.axis.shape == spectrum.axis.shape
     assert corrected.provenance.steps[-1].name == "baseline_correct"
     assert corrected.provenance.steps[-1].parameters["method"] == method
+    assert np.all(np.isfinite(corrected.intensity)), case_name
     assert not np.allclose(corrected.intensity, spectrum.intensity)
-
 
 @pytest.mark.parametrize(
     "step",
@@ -524,7 +550,3 @@ def test_pipeline_applies_axis_changing_step_and_keeps_provenance_order() -> Non
 
     assert np.array_equal(processed.axis, np.array([150.0, 250.0, 350.0, 450.0]))
     assert [step.name for step in processed.provenance.steps[-2:]] == ["resample", "normalize"]
-
-
-
-

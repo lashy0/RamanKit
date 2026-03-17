@@ -299,7 +299,3 @@ def test_fit_peak_raises_for_unsupported_model() -> None:
 
     with pytest.raises(ValueError, match="Unsupported peak model"):
         rpf.fit_peak(spectrum, peak, window=(160.0, 200.0), model="invalid")  # type: ignore[arg-type]
-
-
-
-

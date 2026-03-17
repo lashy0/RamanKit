@@ -80,6 +80,43 @@ class LinearBaseline:
 
 
 @dataclass(frozen=True, slots=True)
+class PolynomialBaseline:
+    """Describe a polynomial baseline added to a synthetic spectrum."""
+
+    coefficients: tuple[float, ...]
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "coefficients", tuple(self.coefficients))
+        if not self.coefficients:
+            raise ValueError(
+                "Expected PolynomialBaseline.coefficients to contain at least one term."
+            )
+
+        coefficients = np.asarray(self.coefficients, dtype=np.float64)
+        if not np.all(np.isfinite(coefficients)):
+            raise ValueError(
+                "Expected PolynomialBaseline.coefficients to contain only finite values."
+            )
+
+
+@dataclass(frozen=True, slots=True)
+class ExponentialBaseline:
+    """Describe an exponential baseline added to a synthetic spectrum."""
+
+    amplitude: float
+    rate: float
+    offset: float = 0.0
+
+    def __post_init__(self) -> None:
+        if not np.isfinite(self.amplitude):
+            raise ValueError("Expected ExponentialBaseline.amplitude to be finite.")
+        if not np.isfinite(self.rate):
+            raise ValueError("Expected ExponentialBaseline.rate to be finite.")
+        if not np.isfinite(self.offset):
+            raise ValueError("Expected ExponentialBaseline.offset to be finite.")
+
+
+@dataclass(frozen=True, slots=True)
 class GaussianNoise:
     """Describe additive Gaussian noise for synthetic generation."""
 
@@ -96,7 +133,7 @@ class SyntheticSpectrumConfig:
     """Bundle the components needed to generate one synthetic spectrum."""
 
     peaks: tuple[PeakComponent, ...]
-    baseline: LinearBaseline | None = None
+    baseline: LinearBaseline | PolynomialBaseline | ExponentialBaseline | None = None
     noise: GaussianNoise | None = None
 
     def __post_init__(self) -> None:
@@ -227,7 +264,7 @@ def _generate_intensity(
         intensity += _evaluate_peak(axis, peak)
 
     if config.baseline is not None:
-        intensity += _evaluate_linear_baseline(axis, config.baseline)
+        intensity += _evaluate_baseline(axis, config.baseline)
 
     if config.noise is not None:
         intensity += _sample_noise(axis.shape, config.noise, rng=rng)
@@ -247,8 +284,22 @@ def _evaluate_peak(axis: Array1D, peak: PeakComponent) -> Array1D:
     return peak.amplitude * voigt_profile(axis - peak.center, peak.sigma, peak.gamma)
 
 
-def _evaluate_linear_baseline(axis: Array1D, baseline: LinearBaseline) -> Array1D:
-    return baseline.offset + baseline.slope * (axis - float(axis[0]))
+def _evaluate_baseline(
+    axis: Array1D,
+    baseline: LinearBaseline | PolynomialBaseline | ExponentialBaseline,
+) -> Array1D:
+    shifted_axis = axis - float(axis[0])
+    if isinstance(baseline, LinearBaseline):
+        return np.asarray(baseline.offset + baseline.slope * shifted_axis, dtype=np.float64)
+    if isinstance(baseline, PolynomialBaseline):
+        return np.asarray(
+            np.polynomial.polynomial.polyval(shifted_axis, baseline.coefficients),
+            dtype=np.float64,
+        )
+    return np.asarray(
+        baseline.offset + baseline.amplitude * np.exp(baseline.rate * shifted_axis),
+        dtype=np.float64,
+    )
 
 
 def _sample_noise(
@@ -280,10 +331,12 @@ def _append_generation_step(
 
 
 __all__ = [
+    "ExponentialBaseline",
     "GaussianNoise",
     "LinearBaseline",
     "PeakComponent",
     "PeakModel",
+    "PolynomialBaseline",
     "SyntheticSpectrumConfig",
     "generate_collection",
     "generate_image",

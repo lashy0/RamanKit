@@ -117,7 +117,7 @@ spectrum = rsyn.generate_spectrum(
             rsyn.PeakComponent(amplitude=5.0, center=160.0, width=6.0),
             rsyn.PeakComponent(model="lorentzian", amplitude=3.0, center=220.0, width=5.0),
         ),
-        baseline=rsyn.LinearBaseline(offset=0.2, slope=0.001),
+        baseline=rsyn.PolynomialBaseline(coefficients=(0.2, 0.001, 2e-6)),
         noise=rsyn.GaussianNoise(sigma=0.05, seed=7),
     ),
     spectral_axis_name="raman_shift",
@@ -191,6 +191,7 @@ uv run pytest
 uv run ruff check .
 uv run mypy src
 ```
+
 
 
 
