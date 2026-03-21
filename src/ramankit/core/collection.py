@@ -5,14 +5,14 @@ from pathlib import Path
 
 import numpy.typing as npt
 
-from ramankit.core._validation import (
-    AxisDirection,
-    NumericArray,
-    coerce_axis,
-    coerce_intensity,
-    validate_axis_length,
+from ramankit.core._nd import (
+    assign_spectral_nd,
+    build_spectrum_from,
+    coerce_spectral_nd,
+    rebuild_like,
 )
-from ramankit.core.metadata import Metadata, Provenance, ensure_metadata, ensure_provenance
+from ramankit.core._validation import AxisDirection, NumericArray
+from ramankit.core.metadata import Metadata, Provenance
 from ramankit.core.spectrum import Spectrum
 
 
@@ -53,21 +53,17 @@ class SpectrumCollection:
             ValueError: If the axis or intensity arrays are invalid or incompatible.
         """
 
-        axis_array, axis_direction = coerce_axis(axis)
-        intensity_array = coerce_intensity(intensity, ndim=2, label="SpectrumCollection intensity")
-        validate_axis_length(
-            axis_array,
-            intensity_array.shape[-1],
-            label="SpectrumCollection intensity",
+        validated = coerce_spectral_nd(
+            axis,
+            intensity,
+            ndim=2,
+            container_name="SpectrumCollection",
+            metadata=metadata,
+            provenance=provenance,
+            spectral_axis_name=spectral_axis_name,
+            spectral_unit=spectral_unit,
         )
-
-        object.__setattr__(self, "axis", axis_array)
-        object.__setattr__(self, "intensity", intensity_array)
-        object.__setattr__(self, "metadata", ensure_metadata(metadata))
-        object.__setattr__(self, "provenance", ensure_provenance(provenance))
-        object.__setattr__(self, "spectral_axis_name", spectral_axis_name)
-        object.__setattr__(self, "spectral_unit", spectral_unit)
-        object.__setattr__(self, "axis_direction", axis_direction)
+        assign_spectral_nd(self, validated)
 
     @classmethod
     def from_spectra(
@@ -117,34 +113,13 @@ class SpectrumCollection:
 
         subset = self.intensity[item]
         if subset.ndim == 1:
-            return Spectrum(
-                axis=self.axis,
-                intensity=subset,
-                metadata=self.metadata,
-                provenance=self.provenance,
-                spectral_axis_name=self.spectral_axis_name,
-                spectral_unit=self.spectral_unit,
-            )
-        return SpectrumCollection(
-            axis=self.axis,
-            intensity=subset,
-            metadata=self.metadata,
-            provenance=self.provenance,
-            spectral_axis_name=self.spectral_axis_name,
-            spectral_unit=self.spectral_unit,
-        )
+            return build_spectrum_from(self, intensity=subset, provenance=self.provenance)
+        return rebuild_like(self, intensity=subset, provenance=self.provenance)
 
     def copy(self) -> SpectrumCollection:
         """Return a detached copy of the collection."""
 
-        return SpectrumCollection(
-            axis=self.axis,
-            intensity=self.intensity,
-            metadata=self.metadata,
-            provenance=self.provenance,
-            spectral_axis_name=self.spectral_axis_name,
-            spectral_unit=self.spectral_unit,
-        )
+        return rebuild_like(self, intensity=self.intensity, provenance=self.provenance)
 
     def add(self, other: SpectrumCollection | float | int) -> SpectrumCollection:
         """Return the elementwise sum of this collection and an operand."""

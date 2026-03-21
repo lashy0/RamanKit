@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 
 import ramankit.preprocessing as pp
-from ramankit import Spectrum, SpectrumCollection
+from ramankit import RamanImage, Spectrum, SpectrumCollection
 
 
 def test_linear_resample_apply_returns_same_container_type() -> None:
@@ -43,3 +43,34 @@ def test_linear_resample_apply_raises_for_out_of_range_target_axis() -> None:
 
     with pytest.raises(ValueError, match="target_axis"):
         pp.resample.Linear(target_axis=np.array([50.0, 150.0])).apply(spectrum)
+
+
+def test_linear_resample_apply_preserves_image_shape() -> None:
+    """Axis-changing batch transforms rebuild RamanImage with its spatial shape intact."""
+
+    image = RamanImage(
+        axis=np.array([100.0, 200.0, 300.0]),
+        intensity=np.arange(12.0).reshape(2, 2, 3),
+    )
+
+    resampled = pp.resample.Linear(target_axis=np.array([150.0, 250.0])).apply(image)
+
+    assert isinstance(resampled, RamanImage)
+    assert resampled.intensity.shape == (2, 2, 2)
+    assert np.array_equal(resampled.axis, np.array([150.0, 250.0]))
+    assert resampled.provenance.steps[-1].name == "resample"
+
+
+def test_linear_resample_apply_preserves_descending_axis_direction() -> None:
+    """Axis-changing rebuilds keep descending target-axis semantics."""
+
+    collection = SpectrumCollection(
+        axis=np.array([300.0, 200.0, 100.0]),
+        intensity=np.array([[3.0, 2.0, 1.0], [6.0, 4.0, 2.0]]),
+    )
+
+    resampled = pp.resample.Linear(target_axis=np.array([250.0, 150.0])).apply(collection)
+
+    assert isinstance(resampled, SpectrumCollection)
+    assert resampled.axis_direction == "descending"
+    assert resampled.intensity.shape == (2, 2)

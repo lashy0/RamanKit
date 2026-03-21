@@ -4,10 +4,15 @@ from collections.abc import Callable
 
 import numpy as np
 
+from ramankit.core._nd import (
+    build_spectrum_from,
+    ensure_compatible_spectral_data,
+    rebuild_like,
+)
 from ramankit.core._validation import NumericArray, validate_axis_compatibility
 from ramankit.core.collection import SpectrumCollection
 from ramankit.core.image import RamanImage
-from ramankit.core.metadata import Provenance, ProvenanceStep
+from ramankit.core.metadata import ProvenanceStep
 from ramankit.core.spectrum import Spectrum
 
 SpectralData = Spectrum | SpectrumCollection | RamanImage
@@ -128,7 +133,7 @@ def _binary_operation[T: (Spectrum, SpectrumCollection, RamanImage)](
     operation_name: str,
 ) -> T:
     if isinstance(right, (Spectrum, SpectrumCollection, RamanImage)):
-        _ensure_compatible_data(left, right)
+        ensure_compatible_spectral_data(left, right)
         right_values: NumericArray | float | int = right.intensity
         parameter: object = type(right).__name__
     else:
@@ -139,7 +144,7 @@ def _binary_operation[T: (Spectrum, SpectrumCollection, RamanImage)](
     provenance = left.provenance.append(
         ProvenanceStep(name=operation_name, parameters={"operand": parameter})
     )
-    return _rebuild_like(left, intensity=intensity, provenance=provenance)
+    return rebuild_like(left, intensity=intensity, provenance=provenance)
 
 
 def _reduce_to_spectrum(
@@ -148,68 +153,9 @@ def _reduce_to_spectrum(
     reducer: Reducer,
     operation_name: str,
 ) -> Spectrum:
-    axes = 0 if isinstance(data, SpectrumCollection) else (0, 1)
+    axes = tuple(range(data.intensity.ndim - 1))
     intensity = reducer(data.intensity, axis=axes)
     provenance = data.provenance.append(
         ProvenanceStep(name=operation_name, parameters={"source": type(data).__name__})
     )
-    return Spectrum(
-        axis=data.axis,
-        intensity=intensity,
-        metadata=data.metadata,
-        provenance=provenance,
-        spectral_axis_name=data.spectral_axis_name,
-        spectral_unit=data.spectral_unit,
-    )
-
-
-def _ensure_compatible_data(left: SpectralData, right: SpectralData) -> None:
-    if type(left) is not type(right):
-        raise ValueError("Spectral operands must have the same container type.")
-    validate_axis_compatibility(
-        left.axis,
-        right.axis,
-        left_name=left.spectral_axis_name,
-        right_name=right.spectral_axis_name,
-        left_unit=left.spectral_unit,
-        right_unit=right.spectral_unit,
-    )
-    if left.intensity.shape != right.intensity.shape:
-        raise ValueError(
-            "Expected spectral operand shapes to match; "
-            f"got {left.intensity.shape} and {right.intensity.shape}."
-        )
-
-
-def _rebuild_like[T: (Spectrum, SpectrumCollection, RamanImage)](
-    template: T,
-    *,
-    intensity: NumericArray,
-    provenance: Provenance,
-) -> T:
-    if isinstance(template, Spectrum):
-        return Spectrum(
-            axis=template.axis,
-            intensity=intensity,
-            metadata=template.metadata,
-            provenance=provenance,
-            spectral_axis_name=template.spectral_axis_name,
-            spectral_unit=template.spectral_unit,
-        )
-    if isinstance(template, SpectrumCollection):
-        return SpectrumCollection(
-            axis=template.axis,
-            intensity=intensity,
-            metadata=template.metadata,
-            provenance=provenance,
-            spectral_axis_name=template.spectral_axis_name,
-            spectral_unit=template.spectral_unit,
-        )
-    return RamanImage(
-        axis=template.axis,
-        intensity=intensity,
-        metadata=template.metadata,
-        provenance=provenance,
-        spectral_axis_name=template.spectral_axis_name,
-        spectral_unit=template.spectral_unit,
-    )
+    return build_spectrum_from(data, intensity=intensity, provenance=provenance)

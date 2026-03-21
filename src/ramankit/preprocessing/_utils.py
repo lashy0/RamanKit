@@ -4,10 +4,9 @@ from collections.abc import Mapping
 
 import numpy as np
 
+from ramankit.core._nd import flatten_spectral_rows, rebuild_like, restore_spectral_rows
 from ramankit.core._validation import coerce_axis
-from ramankit.core.collection import SpectrumCollection
-from ramankit.core.image import RamanImage
-from ramankit.core.metadata import Provenance, ProvenanceStep
+from ramankit.core.metadata import ProvenanceStep
 from ramankit.core.spectrum import Spectrum
 from ramankit.preprocessing._types import (
     AxisTransform1D,
@@ -38,10 +37,10 @@ def apply_spectral_transform(
             function_name=function_name,
         )
     else:
-        flattened = data.intensity.reshape(-1, data.n_points)
+        batch = flatten_spectral_rows(data)
         transformed_batch = None
         if batch_transform is not None:
-            transformed_batch = batch_transform(flattened, data.axis)
+            transformed_batch = batch_transform(batch.rows, data.axis)
 
         if transformed_batch is None:
             intensity = np.stack(
@@ -52,16 +51,17 @@ def apply_spectral_transform(
                         transform=transform,
                         function_name=function_name,
                     )
-                    for row in flattened
+                    for row in batch.rows
                 ],
                 axis=0,
-            ).reshape(data.intensity.shape)
+            )
         else:
             intensity = _validate_batch_transform(
                 transformed_batch,
-                expected_shape=flattened.shape,
+                expected_shape=batch.rows.shape,
                 function_name=function_name,
-            ).reshape(data.intensity.shape)
+            )
+        intensity = restore_spectral_rows(intensity, leading_shape=batch.leading_shape)
 
     provenance = data.provenance.append(
         build_provenance_step(function_name=function_name, method=method, parameters=parameters)
@@ -88,10 +88,10 @@ def apply_axis_transform(
             function_name=function_name,
         )
     else:
-        flattened = data.intensity.reshape(-1, data.n_points)
+        batch = flatten_spectral_rows(data)
         transformed_batch = None
         if batch_transform is not None:
-            transformed_batch = batch_transform(flattened, data.axis)
+            transformed_batch = batch_transform(batch.rows, data.axis)
 
         if transformed_batch is None:
             transformed_rows = [
@@ -101,7 +101,7 @@ def apply_axis_transform(
                     transform=transform,
                     function_name=function_name,
                 )
-                for row in flattened
+                for row in batch.rows
             ]
             axis = _validate_shared_axis(
                 [transformed_axis for transformed_axis, _ in transformed_rows],
@@ -110,58 +110,21 @@ def apply_axis_transform(
             intensity = np.stack(
                 [transformed_intensity for _, transformed_intensity in transformed_rows],
                 axis=0,
-            ).reshape(*data.intensity.shape[:-1], axis.shape[0])
+            )
         else:
             axis, transformed_intensity = transformed_batch
             axis = _validate_transformed_axis(axis, function_name=function_name)
             intensity = _validate_batch_transform(
                 transformed_intensity,
-                expected_shape=(flattened.shape[0], axis.shape[0]),
+                expected_shape=(batch.rows.shape[0], axis.shape[0]),
                 function_name=function_name,
-            ).reshape(*data.intensity.shape[:-1], axis.shape[0])
+            )
+        intensity = restore_spectral_rows(intensity, leading_shape=batch.leading_shape)
 
     provenance = data.provenance.append(
         build_provenance_step(function_name=function_name, method=method, parameters=parameters)
     )
     return rebuild_like(data, axis=axis, intensity=intensity, provenance=provenance)
-
-
-def rebuild_like(
-    data: SpectralDataT,
-    *,
-    axis: FloatArray | None = None,
-    intensity: FloatArray,
-    provenance: Provenance,
-) -> SpectralDataT:
-    """Rebuild a spectral container with new intensity data."""
-
-    axis_values = data.axis if axis is None else axis
-    if isinstance(data, Spectrum):
-        return Spectrum(
-            axis=axis_values,
-            intensity=intensity,
-            metadata=data.metadata,
-            provenance=provenance,
-            spectral_axis_name=data.spectral_axis_name,
-            spectral_unit=data.spectral_unit,
-        )
-    if isinstance(data, SpectrumCollection):
-        return SpectrumCollection(
-            axis=axis_values,
-            intensity=intensity,
-            metadata=data.metadata,
-            provenance=provenance,
-            spectral_axis_name=data.spectral_axis_name,
-            spectral_unit=data.spectral_unit,
-        )
-    return RamanImage(
-        axis=axis_values,
-        intensity=intensity,
-        metadata=data.metadata,
-        provenance=provenance,
-        spectral_axis_name=data.spectral_axis_name,
-        spectral_unit=data.spectral_unit,
-    )
 
 
 def ensure_supported_method(method: str, *, allowed: tuple[str, ...], label: str) -> None:

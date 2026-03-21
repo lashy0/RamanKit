@@ -5,8 +5,9 @@ from pathlib import Path
 
 import numpy.typing as npt
 
-from ramankit.core._validation import AxisDirection, NumericArray, coerce_axis, coerce_intensity
-from ramankit.core.metadata import Metadata, Provenance, ensure_metadata, ensure_provenance
+from ramankit.core._nd import assign_spectral_nd, coerce_spectral_nd, rebuild_like
+from ramankit.core._validation import AxisDirection, NumericArray
+from ramankit.core.metadata import Metadata, Provenance
 
 
 @dataclass(frozen=True, slots=True, init=False)
@@ -45,21 +46,17 @@ class Spectrum:
             ValueError: If the axis or intensity arrays are invalid or incompatible.
         """
 
-        axis_array, axis_direction = coerce_axis(axis)
-        intensity_array = coerce_intensity(intensity, ndim=1, label="Spectrum intensity")
-        if axis_array.shape != intensity_array.shape:
-            raise ValueError(
-                "Expected Spectrum axis and intensity to have the same shape; "
-                f"got {axis_array.shape} and {intensity_array.shape}."
-            )
-
-        object.__setattr__(self, "axis", axis_array)
-        object.__setattr__(self, "intensity", intensity_array)
-        object.__setattr__(self, "metadata", ensure_metadata(metadata))
-        object.__setattr__(self, "provenance", ensure_provenance(provenance))
-        object.__setattr__(self, "spectral_axis_name", spectral_axis_name)
-        object.__setattr__(self, "spectral_unit", spectral_unit)
-        object.__setattr__(self, "axis_direction", axis_direction)
+        validated = coerce_spectral_nd(
+            axis,
+            intensity,
+            ndim=1,
+            container_name="Spectrum",
+            metadata=metadata,
+            provenance=provenance,
+            spectral_axis_name=spectral_axis_name,
+            spectral_unit=spectral_unit,
+        )
+        assign_spectral_nd(self, validated)
 
     @property
     def n_points(self) -> int:
@@ -70,14 +67,7 @@ class Spectrum:
     def copy(self) -> Spectrum:
         """Return a detached copy of the spectrum."""
 
-        return Spectrum(
-            axis=self.axis,
-            intensity=self.intensity,
-            metadata=self.metadata,
-            provenance=self.provenance,
-            spectral_axis_name=self.spectral_axis_name,
-            spectral_unit=self.spectral_unit,
-        )
+        return rebuild_like(self, intensity=self.intensity, provenance=self.provenance)
 
     def add(self, other: Spectrum | float | int) -> Spectrum:
         """Return the elementwise sum of this spectrum and an operand."""

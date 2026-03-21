@@ -5,15 +5,15 @@ from pathlib import Path
 
 import numpy.typing as npt
 
-from ramankit.core._validation import (
-    AxisDirection,
-    NumericArray,
-    coerce_axis,
-    coerce_intensity,
-    validate_axis_length,
+from ramankit.core._nd import (
+    assign_spectral_nd,
+    build_spectrum_from,
+    coerce_spectral_nd,
+    rebuild_like,
 )
+from ramankit.core._validation import AxisDirection, NumericArray
 from ramankit.core.collection import SpectrumCollection
-from ramankit.core.metadata import Metadata, Provenance, ensure_metadata, ensure_provenance
+from ramankit.core.metadata import Metadata, Provenance
 from ramankit.core.spectrum import Spectrum
 
 
@@ -54,17 +54,17 @@ class RamanImage:
             ValueError: If the axis or intensity arrays are invalid or incompatible.
         """
 
-        axis_array, axis_direction = coerce_axis(axis)
-        intensity_array = coerce_intensity(intensity, ndim=3, label="RamanImage intensity")
-        validate_axis_length(axis_array, intensity_array.shape[-1], label="RamanImage intensity")
-
-        object.__setattr__(self, "axis", axis_array)
-        object.__setattr__(self, "intensity", intensity_array)
-        object.__setattr__(self, "metadata", ensure_metadata(metadata))
-        object.__setattr__(self, "provenance", ensure_provenance(provenance))
-        object.__setattr__(self, "spectral_axis_name", spectral_axis_name)
-        object.__setattr__(self, "spectral_unit", spectral_unit)
-        object.__setattr__(self, "axis_direction", axis_direction)
+        validated = coerce_spectral_nd(
+            axis,
+            intensity,
+            ndim=3,
+            container_name="RamanImage",
+            metadata=metadata,
+            provenance=provenance,
+            spectral_axis_name=spectral_axis_name,
+            spectral_unit=spectral_unit,
+        )
+        assign_spectral_nd(self, validated)
 
     @classmethod
     def load(cls, path: str | Path) -> RamanImage:
@@ -99,26 +99,16 @@ class RamanImage:
     def pixel(self, row: int, column: int) -> Spectrum:
         """Return the spectrum stored at one image pixel."""
 
-        return Spectrum(
-            axis=self.axis,
+        return build_spectrum_from(
+            self,
             intensity=self.intensity[row, column],
-            metadata=self.metadata,
             provenance=self.provenance,
-            spectral_axis_name=self.spectral_axis_name,
-            spectral_unit=self.spectral_unit,
         )
 
     def copy(self) -> RamanImage:
         """Return a detached copy of the Raman image."""
 
-        return RamanImage(
-            axis=self.axis,
-            intensity=self.intensity,
-            metadata=self.metadata,
-            provenance=self.provenance,
-            spectral_axis_name=self.spectral_axis_name,
-            spectral_unit=self.spectral_unit,
-        )
+        return rebuild_like(self, intensity=self.intensity, provenance=self.provenance)
 
     def flatten(self) -> SpectrumCollection:
         """Flatten the image into a spectrum collection."""

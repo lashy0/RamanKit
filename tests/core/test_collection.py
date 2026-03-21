@@ -3,7 +3,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from ramankit import Metadata, Spectrum, SpectrumCollection
+from ramankit import Metadata, RamanImage, Spectrum, SpectrumCollection
 
 
 def test_collection_raises_for_axis_length_mismatch() -> None:
@@ -190,3 +190,22 @@ def test_collection_default_metadata_and_provenance() -> None:
     assert col.provenance is not None
     assert col.metadata.sample is None
     assert col.provenance.steps == ()
+
+
+def test_collection_add_preserves_descending_axis_direction() -> None:
+    """Arithmetic rebuilds descending-axis collections without changing direction."""
+
+    col = SpectrumCollection(axis=[3.0, 2.0, 1.0], intensity=[[1.0, 2.0, 3.0]])
+
+    result = col.add(1.0)
+
+    assert result.axis_direction == "descending"
+
+
+def test_collection_add_raises_for_container_type_mismatch() -> None:
+    """Shared arithmetic rejects different public container types."""
+
+    collection = SpectrumCollection(axis=[1.0, 2.0], intensity=[[1.0, 2.0]])
+
+    with pytest.raises(ValueError, match="same container type"):
+        collection.add(RamanImage(axis=[1.0, 2.0], intensity=np.ones((1, 1, 2))))
