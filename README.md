@@ -129,10 +129,12 @@ spectrum = rsyn.generate_spectrum(
 
 ```python
 from ramankit import Spectrum
+from ramankit.io import load
+from ramankit.io.npz import NPZSaver
 
 spectrum = Spectrum(axis=[100.0, 200.0, 300.0], intensity=[1.0, 2.0, 3.0])
-spectrum.save("spectrum.npz")
-loaded = Spectrum.load("spectrum.npz")
+NPZSaver().save(spectrum, "spectrum.npz")
+loaded = load("spectrum.npz", format="npz")
 ```
 
 ### Generic I/O contracts
@@ -145,6 +147,12 @@ from ramankit.io import BaseLoader
 
 
 class MySpectrumLoader(BaseLoader[Spectrum]):
+    format_name = "my_spectrum"
+    supported_suffixes = (".txt",)
+
+    def can_load(self, path: str | Path) -> bool:
+        return Path(path).suffix.lower() == ".txt"
+
     def load(self, path: str | Path) -> Spectrum:
         raise NotImplementedError
 ```

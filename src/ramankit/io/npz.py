@@ -10,11 +10,11 @@ from ramankit.core.collection import SpectrumCollection
 from ramankit.core.image import RamanImage
 from ramankit.core.metadata import Metadata, Provenance, ProvenanceStep
 from ramankit.core.spectrum import Spectrum
+from ramankit.io._provenance import build_load_provenance_step
+from ramankit.io.base import BaseLoader, BaseSaver, SpectralContainer
 
-SpectralContainer = Spectrum | SpectrumCollection | RamanImage
 
-
-class NPZSaver:
+class NPZSaver(BaseSaver[SpectralContainer]):
     """Persist RamanKit spectral containers in the internal NPZ format."""
 
     def save(self, data: SpectralContainer, path: str | Path) -> None:
@@ -33,11 +33,16 @@ class NPZSaver:
         )
 
 
-class NPZLoader:
+class NPZLoader(BaseLoader[SpectralContainer]):
     """Load RamanKit spectral containers from the internal NPZ format."""
+
+    format_name = "npz"
+    supported_suffixes = (".npz",)
 
     def load(self, path: str | Path) -> SpectralContainer:
         """Load one spectral container from an NPZ archive."""
+
+        resolved = str(Path(path).resolve())
 
         with np.load(Path(path), allow_pickle=False) as archive:
             required_keys = {
@@ -65,6 +70,15 @@ class NPZLoader:
             metadata = _metadata_from_dict(_decode_json_field(archive, "metadata_json"))
             provenance = _provenance_from_dict(
                 _decode_json_field(archive, "provenance_json")
+            ).append(
+                build_load_provenance_step(
+                    "load_npz",
+                    format_name=self.format_name,
+                    vendor="ramankit",
+                    file_type="npz_archive",
+                    path=resolved,
+                    description="Loaded container from RamanKit NPZ persistence format.",
+                )
             )
 
         match container_type:
@@ -107,19 +121,53 @@ def _metadata_from_dict(payload: object) -> Metadata:
     if not isinstance(payload, dict):
         raise ValueError("Expected metadata payload to be a JSON object.")
 
-    sample = payload.get("sample")
-    instrument = payload.get("instrument")
-    acquisition = payload.get("acquisition")
-    extras = {
-        key: value
-        for key, value in payload.items()
-        if key not in {"sample", "instrument", "acquisition"}
+    sample = _optional_string(payload.get("sample"))
+    instrument = _optional_string(payload.get("instrument"))
+    acquisition = _optional_string(payload.get("acquisition"))
+    grating = _optional_string(payload.get("grating"))
+    objective = _optional_string(payload.get("objective"))
+    acquisition_datetime = _optional_string(payload.get("acquisition_datetime"))
+    operator = _optional_string(payload.get("operator"))
+    laser_wavelength = _optional_float(payload.get("laser_wavelength"))
+    exposure_time = _optional_float(payload.get("exposure_time"))
+    accumulations = _optional_int(payload.get("accumulations"))
+
+    extras_payload = payload.get("extras", {})
+    raw_vendor_payload = payload.get("raw_vendor_metadata", {})
+    if not isinstance(extras_payload, dict):
+        raise ValueError("Expected metadata extras to be a JSON object.")
+    if not isinstance(raw_vendor_payload, dict):
+        raise ValueError("Expected raw vendor metadata to be a JSON object.")
+
+    reserved_keys = {
+        "sample",
+        "instrument",
+        "acquisition",
+        "laser_wavelength",
+        "grating",
+        "exposure_time",
+        "accumulations",
+        "objective",
+        "acquisition_datetime",
+        "operator",
+        "extras",
+        "raw_vendor_metadata",
     }
+    extras = dict(extras_payload)
+    extras.update({key: value for key, value in payload.items() if key not in reserved_keys})
     return Metadata(
-        sample=sample if isinstance(sample, str) else None,
-        instrument=instrument if isinstance(instrument, str) else None,
-        acquisition=acquisition if isinstance(acquisition, str) else None,
+        sample=sample,
+        instrument=instrument,
+        acquisition=acquisition,
+        laser_wavelength=laser_wavelength,
+        grating=grating,
+        exposure_time=exposure_time,
+        accumulations=accumulations,
+        objective=objective,
+        acquisition_datetime=acquisition_datetime,
+        operator=operator,
         extras=extras,
+        raw_vendor_metadata=raw_vendor_payload,
     )
 
 
@@ -194,3 +242,23 @@ def _decode_json_field(archive: np.lib.npyio.NpzFile, key: str) -> object:
         return json.loads(str(archive[key].item()))
     except (JSONDecodeError, TypeError, ValueError) as error:
         raise ValueError(f"Invalid JSON payload stored in '{key}'.") from error
+
+
+def _optional_string(value: object) -> str | None:
+    return value if isinstance(value, str) else None
+
+
+def _optional_float(value: object) -> float | None:
+    if isinstance(value, bool) or value is None:
+        return None
+    if isinstance(value, int | float):
+        return float(value)
+    return None
+
+
+def _optional_int(value: object) -> int | None:
+    if isinstance(value, bool) or value is None:
+        return None
+    if isinstance(value, int):
+        return value
+    return None

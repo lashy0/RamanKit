@@ -1,11 +1,11 @@
 # I/O abstractions
 
-RamanKit exposes generic extension points for file and directory I/O and ships one built-in persistence format for round-tripping existing containers.
+RamanKit exposes generic loader and saver contracts, a built-in loader registry, and one built-in NPZ persistence format for round-tripping existing containers.
 
 ## Public API
 
 ```python
-from ramankit.io import BaseLoader, BaseSaver
+from ramankit.io import BaseLoader, BaseSaver, LoaderRegistry, load
 from ramankit.io.npz import NPZLoader, NPZSaver
 ```
 
@@ -18,6 +18,20 @@ def load(self, path: str | Path) -> T:
     ...
 ```
 
+Loaders may also declare:
+
+```python
+format_name: str
+supported_suffixes: tuple[str, ...]
+
+def can_load(self, path: str | Path) -> bool:
+    ...
+```
+
+`can_load()` must stay cheap and deterministic. It may inspect suffixes,
+directory layout, or a small fixed-size header read, but it must not perform
+deep parsing.
+
 `BaseSaver[T]` defines one method:
 
 ```python
@@ -25,16 +39,36 @@ def save(self, data: T, path: str | Path) -> None:
     ...
 ```
 
+## Registry-based loading
+
+Top-level loading goes through the built-in registry:
+
+```python
+from ramankit.io import load
+
+loaded = load("spectrum.npz", format="npz")
+```
+
+Auto-detection is conservative:
+
+- explicit `format=` always wins
+- otherwise suffix matching runs first
+- optional `can_load()` runs only when no suffix matched
+- ambiguous matches raise `ValueError`
+- no match raises `ValueError`
+
 ## Built-in NPZ format
 
-All core containers provide convenience methods for the built-in NPZ round-trip format.
+The preferred NPZ workflow is:
 
 ```python
 from ramankit import Spectrum
+from ramankit.io import load
+from ramankit.io.npz import NPZSaver
 
 spectrum = Spectrum(axis=[100.0, 200.0, 300.0], intensity=[1.0, 2.0, 3.0])
-spectrum.save("spectrum.npz")
-loaded = Spectrum.load("spectrum.npz")
+NPZSaver().save(spectrum, "spectrum.npz")
+loaded = load("spectrum.npz", format="npz")
 ```
 
 Low-level access stays available through `ramankit.io.npz`:
@@ -53,13 +87,19 @@ from ramankit.io import BaseLoader
 
 
 class MySpectrumLoader(BaseLoader[Spectrum]):
+    format_name = "my_spectrum"
+    supported_suffixes = (".txt",)
+
+    def can_load(self, path: str | Path) -> bool:
+        return Path(path).suffix.lower() == ".txt"
+
     def load(self, path: str | Path) -> Spectrum:
         raise NotImplementedError
 ```
 
 ## Design intent
 
-- generic contracts are the extension points for future formats
+- generic contracts and the registry are the extension points for future formats
 - NPZ is the built-in persistence backend
 - read-side and write-side responsibilities remain separate
 - metadata and provenance are serialized explicitly without `pickle`

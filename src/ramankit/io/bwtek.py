@@ -4,8 +4,9 @@ from pathlib import Path
 
 import numpy as np
 
-from ramankit.core.metadata import Metadata, Provenance, ProvenanceStep
+from ramankit.core.metadata import Metadata, Provenance
 from ramankit.core.spectrum import Spectrum
+from ramankit.io._provenance import build_load_provenance_step
 from ramankit.io.base import BaseLoader
 
 _HEADER_SENTINEL = "Pixel"
@@ -26,6 +27,9 @@ class BWTekLoader(BaseLoader[Spectrum]):
             Defaults to ``"Dark Subtracted #1"``.
         encoding: Text encoding of the file.  Defaults to ``"utf-8"``.
     """
+
+    format_name = "bwtek"
+    supported_suffixes = (".txt",)
 
     def __init__(
         self,
@@ -94,8 +98,6 @@ class BWTekLoader(BaseLoader[Spectrum]):
             f"Integration: {raw_meta.get('intigration times(us)')} us, "
             f"Averages: {raw_meta.get('average number')}"
         )
-        _extracted = {"model", "title", "Date", "intigration times(us)", "average number"}
-        extras: dict[str, object] = {k: v for k, v in raw_meta.items() if k not in _extracted}
 
         col_names = [c.strip() for c in header_line.split(";") if c.strip()]
 
@@ -135,20 +137,30 @@ class BWTekLoader(BaseLoader[Spectrum]):
             sample=None,
             instrument=instrument,
             acquisition=acquisition,
-            extras=extras,
+            laser_wavelength=_parse_locale_float(raw_meta.get("laser_wavelength")),
+            grating=_optional_string(raw_meta.get("grating")),
+            exposure_time=_parse_locale_float(raw_meta.get("intigration times(us)")),
+            accumulations=_parse_locale_int(raw_meta.get("average number")),
+            objective=_optional_string(raw_meta.get("objective")),
+            acquisition_datetime=_optional_string(raw_meta.get("Date")),
+            operator=_optional_string(raw_meta.get("operator")),
+            raw_vendor_metadata=raw_meta,
         )
 
         resolved = str(path.resolve())
         provenance = Provenance(
             source=resolved,
             steps=(
-                ProvenanceStep(
-                    name="bwtek_load",
-                    parameters={
+                build_load_provenance_step(
+                    "load_bwtek",
+                    format_name=self.format_name,
+                    vendor="bwtek",
+                    file_type="bwram_txt",
+                    path=resolved,
+                    extra_parameters={
                         "axis_column": self._axis_column,
                         "intensity_column": self._intensity_column,
                         "encoding": self._encoding,
-                        "path": resolved,
                     },
                     description="Loaded spectrum from B&W Tek TXT export.",
                 ),
@@ -163,3 +175,36 @@ class BWTekLoader(BaseLoader[Spectrum]):
             spectral_axis_name="raman_shift",
             spectral_unit="cm^-1",
         )
+
+    def can_load(self, path: str | Path) -> bool:
+        """Return True when a small header read looks like B&W Tek text export."""
+
+        candidate = Path(path)
+        if candidate.is_dir():
+            return False
+        try:
+            with candidate.open("r", encoding=self._encoding) as handle:
+                header = handle.read(4096)
+        except (FileNotFoundError, OSError, UnicodeDecodeError):
+            return False
+        return any(
+            line.split(";", maxsplit=1)[0].strip() == _HEADER_SENTINEL
+            for line in header.splitlines()
+        )
+
+
+def _optional_string(value: str | None) -> str | None:
+    return value
+
+
+def _parse_locale_float(value: str | None) -> float | None:
+    if value is None or not value.strip():
+        return None
+    return float(value.replace(",", "."))
+
+
+def _parse_locale_int(value: str | None) -> int | None:
+    parsed = _parse_locale_float(value)
+    if parsed is None:
+        return None
+    return int(parsed)

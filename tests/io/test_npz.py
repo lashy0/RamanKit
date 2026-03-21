@@ -7,6 +7,7 @@ import numpy as np
 import pytest
 
 from ramankit import Metadata, Provenance, ProvenanceStep, RamanImage, Spectrum, SpectrumCollection
+from ramankit.io import load as io_load
 from ramankit.io.npz import NPZLoader, NPZSaver
 
 
@@ -20,13 +21,23 @@ def _test_path(name: str) -> Path:
         path.unlink()
     return path
 
-def test_spectrum_npz_round_trip_via_container_methods() -> None:
-    """Round-trip a spectrum through the built-in NPZ persistence API."""
+def test_spectrum_npz_round_trip_via_public_io_load() -> None:
+    """Round-trip a spectrum through NPZ save and public registry-based load."""
 
     spectrum = Spectrum(
         axis=np.array([100.0, 200.0, 300.0]),
         intensity=np.array([1.0, 2.0, 3.0]),
-        metadata=Metadata(sample="sample-1", instrument="inst-1", extras={"laser": 785}),
+        metadata=Metadata(
+            sample="sample-1",
+            instrument="inst-1",
+            laser_wavelength=785.0,
+            exposure_time=0.5,
+            accumulations=3,
+            acquisition_datetime="2025-02-19 12:06:04",
+            operator="operator-1",
+            extras={"laser": 785},
+            raw_vendor_metadata={"source_format": "synthetic"},
+        ),
         provenance=Provenance(
             source="synthetic",
             steps=(ProvenanceStep(name="load", parameters={"kind": "synthetic"}),),
@@ -36,18 +47,20 @@ def test_spectrum_npz_round_trip_via_container_methods() -> None:
     )
     path = _test_path("spectrum.npz")
 
-    spectrum.save(path)
-    loaded = Spectrum.load(path)
+    NPZSaver().save(spectrum, path)
+    loaded = io_load(path, format="npz")
 
+    assert isinstance(loaded, Spectrum)
     assert np.array_equal(loaded.axis, spectrum.axis)
     assert np.array_equal(loaded.intensity, spectrum.intensity)
     assert loaded.metadata == spectrum.metadata
-    assert loaded.provenance == spectrum.provenance
+    assert loaded.provenance.steps[:-1] == spectrum.provenance.steps
+    assert loaded.provenance.steps[-1].name == "load_npz"
     assert loaded.spectral_axis_name == spectrum.spectral_axis_name
     assert loaded.spectral_unit == spectrum.spectral_unit
 
-def test_collection_npz_round_trip_via_container_methods() -> None:
-    """Round-trip a spectrum collection through the built-in NPZ persistence API."""
+def test_collection_npz_round_trip_via_public_io_load() -> None:
+    """Round-trip a spectrum collection through NPZ save and public load."""
 
     collection = SpectrumCollection(
         axis=np.array([100.0, 200.0, 300.0]),
@@ -59,16 +72,18 @@ def test_collection_npz_round_trip_via_container_methods() -> None:
     )
     path = _test_path("collection.npz")
 
-    collection.save(path)
-    loaded = SpectrumCollection.load(path)
+    NPZSaver().save(collection, path)
+    loaded = io_load(path)
 
+    assert isinstance(loaded, SpectrumCollection)
     assert np.array_equal(loaded.axis, collection.axis)
     assert np.array_equal(loaded.intensity, collection.intensity)
     assert loaded.metadata == collection.metadata
-    assert loaded.provenance == collection.provenance
+    assert loaded.provenance.steps[:-1] == collection.provenance.steps
+    assert loaded.provenance.steps[-1].name == "load_npz"
 
-def test_image_npz_round_trip_via_container_methods() -> None:
-    """Round-trip a Raman image through the built-in NPZ persistence API."""
+def test_image_npz_round_trip_via_public_io_load() -> None:
+    """Round-trip a Raman image through NPZ save and public load."""
 
     image = RamanImage(
         axis=np.array([100.0, 200.0, 300.0]),
@@ -80,13 +95,15 @@ def test_image_npz_round_trip_via_container_methods() -> None:
     )
     path = _test_path("image.npz")
 
-    image.save(path)
-    loaded = RamanImage.load(path)
+    NPZSaver().save(image, path)
+    loaded = io_load(path)
 
+    assert isinstance(loaded, RamanImage)
     assert np.array_equal(loaded.axis, image.axis)
     assert np.array_equal(loaded.intensity, image.intensity)
     assert loaded.metadata == image.metadata
-    assert loaded.provenance == image.provenance
+    assert loaded.provenance.steps[:-1] == image.provenance.steps
+    assert loaded.provenance.steps[-1].name == "load_npz"
 
 def test_npz_backend_round_trip_works_directly() -> None:
     """Round-trip a spectrum through the low-level NPZ saver and loader."""
@@ -99,20 +116,30 @@ def test_npz_backend_round_trip_works_directly() -> None:
 
     assert isinstance(loaded, Spectrum)
     assert np.array_equal(loaded.intensity, spectrum.intensity)
+    assert loaded.provenance.steps[-1].name == "load_npz"
 
-def test_container_load_raises_for_type_mismatch() -> None:
-    """Reject loading an NPZ file through the wrong container class."""
 
-    image = RamanImage(
-        axis=np.array([100.0, 200.0, 300.0]),
-        intensity=np.array([[[1.0, 2.0, 3.0], [2.0, 3.0, 4.0]]]),
-    )
-    path = _test_path("wrong-type.npz")
+def test_public_io_load_auto_detects_npz_suffix() -> None:
+    """Top-level loading auto-detects NPZ archives from the suffix."""
 
-    image.save(path)
+    spectrum = Spectrum(axis=[100.0, 200.0, 300.0], intensity=[1.0, 2.0, 3.0])
+    path = _test_path("autodetect.npz")
 
-    with pytest.raises(ValueError, match="Expected Spectrum"):
-        Spectrum.load(path)
+    NPZSaver().save(spectrum, path)
+    loaded = io_load(path)
+
+    assert isinstance(loaded, Spectrum)
+
+
+def test_core_containers_do_not_expose_load_or_save_methods() -> None:
+    """Core containers no longer expose built-in NPZ convenience methods."""
+
+    assert not hasattr(Spectrum, "load")
+    assert not hasattr(Spectrum, "save")
+    assert not hasattr(SpectrumCollection, "load")
+    assert not hasattr(SpectrumCollection, "save")
+    assert not hasattr(RamanImage, "load")
+    assert not hasattr(RamanImage, "save")
 
 def test_npz_loader_raises_for_unknown_container_type() -> None:
     """Reject NPZ archives with an unsupported container type."""

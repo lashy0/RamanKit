@@ -6,6 +6,7 @@ import numpy as np
 import pytest
 
 from ramankit.core.spectrum import Spectrum
+from ramankit.io import load as io_load
 from ramankit.io.bwtek import BWTekLoader
 
 _META_BLOCK = """\
@@ -157,16 +158,18 @@ def test_bwtek_metadata_acquisition_contains_integration_time() -> None:
     assert "500000" in acq
 
 
-def test_bwtek_metadata_extras_contains_laser_wavelength() -> None:
-    """laser_wavelength is preserved in extras."""
-    assert "laser_wavelength" in BWTekLoader().load(_write_fixture()).metadata.extras
+def test_bwtek_metadata_laser_wavelength_is_normalized() -> None:
+    """laser_wavelength is parsed into the normalized metadata field."""
+
+    result = BWTekLoader().load(_write_fixture())
+
+    assert result.metadata.laser_wavelength == pytest.approx(785.022475277658)
 
 
 def test_bwtek_extracted_keys_absent_from_extras() -> None:
-    """Keys consumed into structured fields do not appear in extras."""
-    extras = BWTekLoader().load(_write_fixture()).metadata.extras
-    for key in ("model", "title", "Date", "intigration times(us)", "average number"):
-        assert key not in extras, f"extracted key '{key}' leaked into extras"
+    """B&W Tek metadata normalization does not leak raw keys into extras."""
+
+    assert BWTekLoader().load(_write_fixture()).metadata.extras == {}
 
 
 def test_bwtek_metadata_sample_is_none() -> None:
@@ -174,9 +177,39 @@ def test_bwtek_metadata_sample_is_none() -> None:
     assert BWTekLoader().load(_write_fixture()).metadata.sample is None
 
 
-def test_bwtek_key_only_metadata_line_produces_empty_string() -> None:
-    """A metadata line with no value after the separator maps to empty string."""
-    assert BWTekLoader().load(_write_fixture()).metadata.extras.get("operator") == ""
+def test_bwtek_operator_is_normalized() -> None:
+    """A metadata line with no value after the separator maps to empty operator string."""
+
+    assert BWTekLoader().load(_write_fixture()).metadata.operator == ""
+
+
+def test_bwtek_metadata_exposure_time_is_normalized() -> None:
+    """The configured exposure/integration time is parsed into normalized metadata."""
+
+    assert BWTekLoader().load(_write_fixture()).metadata.exposure_time == 500000.0
+
+
+def test_bwtek_metadata_accumulations_is_normalized() -> None:
+    """The average number field is parsed into normalized metadata."""
+
+    assert BWTekLoader().load(_write_fixture()).metadata.accumulations == 5
+
+
+def test_bwtek_metadata_acquisition_datetime_is_normalized() -> None:
+    """The acquisition timestamp is preserved in a dedicated normalized field."""
+
+    result = BWTekLoader().load(_write_fixture())
+
+    assert result.metadata.acquisition_datetime == "2025-02-19 12:06:04"
+
+
+def test_bwtek_raw_vendor_metadata_is_preserved_unchanged() -> None:
+    """Original vendor metadata is preserved separately from normalized fields."""
+
+    metadata = BWTekLoader().load(_write_fixture()).metadata
+
+    assert metadata.raw_vendor_metadata["laser_wavelength"] == "785,022475277658"
+    assert metadata.raw_vendor_metadata["operator"] == ""
 
 
 def test_bwtek_blank_metadata_lines_are_skipped() -> None:
@@ -193,16 +226,19 @@ def test_bwtek_provenance_source_is_absolute_path() -> None:
 
 
 def test_bwtek_provenance_single_step() -> None:
-    """Exactly one provenance step named bwtek_load is recorded."""
+    """Exactly one provenance step named load_bwtek is recorded."""
     steps = BWTekLoader().load(_write_fixture()).provenance.steps
     assert len(steps) == 1
-    assert steps[0].name == "bwtek_load"
+    assert steps[0].name == "load_bwtek"
 
 
 def test_bwtek_provenance_parameters_recorded() -> None:
     """Loader parameters are stored in the provenance step."""
     path = _write_fixture()
     params = BWTekLoader().load(path).provenance.steps[0].parameters
+    assert params["format"] == "bwtek"
+    assert params["vendor"] == "bwtek"
+    assert params["file_type"] == "bwram_txt"
     assert params["axis_column"] == "Raman Shift"
     assert params["intensity_column"] == "Dark Subtracted #1"
     assert params["encoding"] == "utf-8"
@@ -224,6 +260,22 @@ def test_bwtek_spectral_axis_name() -> None:
 def test_bwtek_spectral_unit() -> None:
     """spectral_unit is set to cm^-1."""
     assert BWTekLoader().load(_write_fixture()).spectral_unit == "cm^-1"
+
+
+def test_bwtek_public_io_load_supports_explicit_format() -> None:
+    """Top-level loading supports explicit selection of the bwtek loader."""
+
+    result = io_load(_write_fixture(), format="bwtek")
+
+    assert isinstance(result, Spectrum)
+
+
+def test_bwtek_public_io_load_auto_detects_txt_suffix() -> None:
+    """Top-level loading auto-detects B&W Tek TXT files by suffix."""
+
+    result = io_load(_write_fixture())
+
+    assert isinstance(result, Spectrum)
 
 
 def test_bwtek_custom_axis_column_wavenumber() -> None:

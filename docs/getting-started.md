@@ -58,10 +58,11 @@ processed = pipeline.apply(spectrum)
 ## Built-in persistence workflow
 
 ```python
-from ramankit import Spectrum
+from ramankit.io import load
+from ramankit.io.npz import NPZSaver
 
-spectrum.save("spectrum.npz")
-loaded = Spectrum.load("spectrum.npz")
+NPZSaver().save(spectrum, "spectrum.npz")
+loaded = load("spectrum.npz", format="npz")
 ```
 
 ## I/O extension workflow
@@ -76,6 +77,12 @@ from ramankit.io import BaseLoader
 
 
 class MySpectrumLoader(BaseLoader[Spectrum]):
+    format_name = "my_spectrum"
+    supported_suffixes = (".txt",)
+
+    def can_load(self, path: str | Path) -> bool:
+        return Path(path).suffix.lower() == ".txt"
+
     def load(self, path: str | Path) -> Spectrum:
         raise NotImplementedError
 ```

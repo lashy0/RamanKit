@@ -18,10 +18,19 @@ class Metadata:
     sample: str | None = None
     instrument: str | None = None
     acquisition: str | None = None
+    laser_wavelength: float | None = None
+    grating: str | None = None
+    exposure_time: float | None = None
+    accumulations: int | None = None
+    objective: str | None = None
+    acquisition_datetime: str | None = None
+    operator: str | None = None
     extras: Mapping[str, object] = field(default_factory=dict)
+    raw_vendor_metadata: Mapping[str, object] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "extras", _freeze_mapping(self.extras))
+        object.__setattr__(self, "raw_vendor_metadata", _freeze_mapping(self.raw_vendor_metadata))
 
     def to_dict(self) -> dict[str, object]:
         """Return metadata as a plain dictionary."""
@@ -33,7 +42,24 @@ class Metadata:
             data["instrument"] = self.instrument
         if self.acquisition is not None:
             data["acquisition"] = self.acquisition
-        data.update(self.extras)
+        if self.laser_wavelength is not None:
+            data["laser_wavelength"] = self.laser_wavelength
+        if self.grating is not None:
+            data["grating"] = self.grating
+        if self.exposure_time is not None:
+            data["exposure_time"] = self.exposure_time
+        if self.accumulations is not None:
+            data["accumulations"] = self.accumulations
+        if self.objective is not None:
+            data["objective"] = self.objective
+        if self.acquisition_datetime is not None:
+            data["acquisition_datetime"] = self.acquisition_datetime
+        if self.operator is not None:
+            data["operator"] = self.operator
+        if self.extras:
+            data["extras"] = dict(self.extras)
+        if self.raw_vendor_metadata:
+            data["raw_vendor_metadata"] = dict(self.raw_vendor_metadata)
         return data
 
 

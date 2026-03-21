@@ -44,10 +44,11 @@ Use this package for peak detection, batch peak detection, and peak fitting on s
 ## I/O package
 
 ```python
-from ramankit.io import BaseLoader, BaseSaver
+from ramankit.io import BaseLoader, BaseSaver, LoaderRegistry, load
 ```
 
-Use this package when implementing custom readers and writers.
+Use this package when implementing custom readers and writers or when loading
+data through the built-in registry.
 
 ## Metrics package
 
@@ -58,6 +59,7 @@ import ramankit.metrics as rm
 Use this package for spectral similarity (`cosine_similarity`,
 `pearson_correlation`, `mse`) and general quality metrics (`snr`, `band_area`)
 across spectra, collections, and Raman images.
+
 ## Plotting package
 
 ```python
@@ -83,4 +85,3 @@ import ramankit.synthetic as rsyn
 ```
 
 Use this package for synthetic spectra, collections, and Raman image generation from explicit peak, baseline, and noise parameters.
-
