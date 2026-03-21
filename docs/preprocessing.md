@@ -12,6 +12,13 @@ Every preprocessing step:
 - preserves metadata
 - appends one provenance step
 
+RamanKit exposes two explicit step categories:
+
+- `pp.PreprocessingStep` for transforms that preserve the spectral axis exactly
+- `pp.AxisTransformStep` for transforms that may change both axis and intensity
+
+This keeps spectral-axis changes explicit in the type of preprocessing step you implement.
+
 ## Import style
 
 ```python
@@ -20,7 +27,9 @@ import ramankit.preprocessing as pp
 
 ## Built-in steps
 
-### Baseline
+### Axis-preserving steps
+
+#### Baseline
 
 Least-squares methods:
 
@@ -53,11 +62,11 @@ Other methods:
 - Use `ModPoly` or `IModPoly` for simple polynomial-like backgrounds without tuning `lam`.
 - Use `IRSQR` or `FABC` when the background shape is difficult and a more specialized model helps.
 
-### Despike
+#### Despike
 
 - `pp.despike.WhitakerHayes`
 
-### Smoothing
+#### Smoothing
 
 - `pp.smoothing.SavGol`
 - `pp.smoothing.Whittaker`
@@ -67,21 +76,43 @@ Other methods:
 - `Whittaker` for one-parameter smoothness control via `lam`.
 - `Gaussian` for simple sigma-based smoothing.
 
-### Normalization
+#### Normalization
 
 - `pp.normalization.Vector`
 - `pp.normalization.Area`
 - `pp.normalization.Max`
 - `pp.normalization.MinMax`
 
-### Miscellaneous
+#### Miscellaneous axis-preserving steps
 
-- `pp.misc.Cropper`
 - `pp.misc.BackgroundSubtractor`
 
-### Resampling
+### Axis-transform steps
 
+- `pp.misc.Cropper`
 - `pp.resample.Linear`
+
+## Custom axis-transform steps
+
+Use `pp.AxisTransformStep` when your preprocessing step returns both a new axis and matching intensity values.
+
+```python
+from dataclasses import dataclass
+
+import ramankit.preprocessing as pp
+from ramankit.preprocessing._types import Array1D
+
+
+@dataclass(frozen=True, slots=True)
+class ShiftAxis(pp.AxisTransformStep):
+    function_name = "shift_axis"
+    method_name = "constant"
+
+    shift: float
+
+    def _transform_with_axis(self, intensity: Array1D, axis: Array1D) -> tuple[Array1D, Array1D]:
+        return axis + self.shift, intensity
+```
 
 ## Pipelines
 
@@ -92,7 +123,7 @@ import ramankit.preprocessing as pp
 
 pipeline = pp.Pipeline(
     [
-        pp.despike.WhitakerHayes(),
+        pp.misc.Cropper(lower_bound=400.0, upper_bound=1800.0),
         pp.baseline.ARPLS(),
         pp.smoothing.Whittaker(lam=1e3),
         pp.normalization.Vector(),
@@ -105,6 +136,6 @@ processed = pipeline.apply(spectrum)
 ## Scientific notes
 
 - preprocessing always works along the spectral axis
+- axis changes are explicit through `AxisTransformStep`; ordinary preprocessing steps preserve axis semantics
 - resampling is explicit; arithmetic and reductions do not auto-align axes
 - metadata is preserved and provenance is extended, not replaced
-

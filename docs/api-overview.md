@@ -32,6 +32,11 @@ import ramankit.preprocessing as pp
 
 Use this package for step-based preprocessing and pipelines.
 
+The preprocessing namespace exposes two explicit step categories:
+
+- `pp.PreprocessingStep` for transforms that preserve the spectral axis exactly
+- `pp.AxisTransformStep` for transforms that may change both axis and intensity
+
 ## Peaks package
 
 ```python
@@ -73,10 +78,11 @@ Use this package for module-level plotting helpers for spectra, peaks, and Raman
 ## Pipelines package
 
 ```python
-from ramankit.pipelines import Pipeline, PreprocessingStep
+from ramankit.pipelines import AxisTransformStep, Pipeline, PreprocessingStep
 ```
 
-This package contains the reusable pipeline and preprocessing-step abstractions behind the preprocessing namespace.
+This package contains the reusable pipeline abstraction plus the explicit base
+classes for axis-preserving and axis-changing preprocessing steps.
 
 ## Synthetic package
 

@@ -1,10 +1,11 @@
 """Expose preprocessing steps and pipeline helpers."""
 
-from ramankit.pipelines.pipeline import Pipeline, PreprocessingStep
+from ramankit.pipelines.pipeline import AxisTransformStep, Pipeline, PreprocessingStep
 from ramankit.preprocessing import baseline, despike, misc, normalization, resample, smoothing
 from ramankit.preprocessing._types import SpectralData
 
 __all__ = [
+    "AxisTransformStep",
     "Pipeline",
     "PreprocessingStep",
     "SpectralData",

@@ -1,3 +1,3 @@
-from ramankit.pipelines.pipeline import Pipeline, PreprocessingStep
+from ramankit.pipelines.pipeline import AxisTransformStep, Pipeline, PreprocessingStep
 
-__all__ = ["Pipeline", "PreprocessingStep"]
+__all__ = ["AxisTransformStep", "Pipeline", "PreprocessingStep"]
