@@ -55,6 +55,15 @@ from ramankit.io import BaseLoader, BaseSaver, LoaderRegistry, load
 Use this package when implementing custom readers and writers or when loading
 data through the built-in registry.
 
+## Analysis package
+
+```python
+import ramankit.analysis as ra
+```
+
+Use this package for spectral decomposition of `SpectrumCollection` and `RamanImage`
+data. Available methods: `pca`, `nmf`, `ica`.
+
 ## Metrics package
 
 ```python

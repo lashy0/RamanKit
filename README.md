@@ -10,6 +10,7 @@ RamanKit is a Python library for Raman spectroscopy data processing and analysis
 src/ramankit/
 ├─ __init__.py          # public package exports
 ├─ core/                # spectral domain models and metadata
+├─ analysis/            # spectral decomposition (PCA, NMF, ICA)
 ├─ io/                  # generic I/O contracts and persistence backends
 ├─ peaks/               # peak analysis modules
 ├─ pipelines/           # reusable preprocessing pipelines
@@ -125,6 +126,27 @@ spectrum = rsyn.generate_spectrum(
 )
 ```
 
+### Analysis
+
+```python
+import ramankit.analysis as ra
+
+result = ra.pca(image, n_components=3)
+result.components        # SpectrumCollection of 3 component spectra
+result.scores            # (height, width, 3) — spatial maps
+result.explained_variance_ratio  # (3,) — variance explained per component
+
+result = ra.nmf(collection, n_components=3)
+result.reconstruction_error  # scalar residual after fitting
+
+result = ra.ica(collection, n_components=3, random_state=42)
+result.mixing_matrix     # (n_points, 3) — mixing matrix
+```
+
+All methods accept `SpectrumCollection` or `RamanImage`. Scores preserve the
+spatial shape of the input. Component spectra are returned as a
+`SpectrumCollection` sharing the input spectral axis with provenance recorded.
+
 ### NPZ persistence
 
 ```python
@@ -185,6 +207,7 @@ docs/
 ├─ getting-started.md  # installation, first objects, and the basic workflow
 ├─ core.md             # core container semantics, metadata, and provenance
 ├─ preprocessing.md    # preprocessing steps, pipelines, and built-in operations
+├─ analysis.md         # spectral decomposition: PCA, NMF, ICA
 ├─ io.md               # generic I/O contracts and built-in NPZ persistence
 ├─ peaks.md            # peak detection, single-peak fitting, and multi-peak fitting
 ├─ plotting.md         # spectral, peak, and map plotting helpers
