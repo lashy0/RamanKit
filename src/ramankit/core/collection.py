@@ -15,6 +15,17 @@ from ramankit.core.metadata import Metadata, Provenance
 from ramankit.core.spectrum import Spectrum
 
 
+@dataclass(frozen=True, slots=True)
+class NumpyExport:
+    """Structured NumPy export of a SpectrumCollection."""
+
+    intensity: NumericArray
+    """Intensity matrix of shape ``(n_spectra, n_points)``."""
+
+    axis: NumericArray
+    """Spectral axis of shape ``(n_points,)``."""
+
+
 @dataclass(frozen=True, slots=True, init=False)
 class SpectrumCollection:
     """Represent a batch of spectra that share one spectral axis."""
@@ -103,6 +114,28 @@ class SpectrumCollection:
         if subset.ndim == 1:
             return build_spectrum_from(self, intensity=subset, provenance=self.provenance)
         return rebuild_like(self, intensity=subset, provenance=self.provenance)
+
+    def to_numpy(self, *, copy: bool = True) -> NumpyExport:
+        """Export intensity matrix and spectral axis as NumPy arrays.
+
+        Args:
+            copy: If ``True`` (default), return independent copies of the
+                underlying arrays.  If ``False``, return views that share
+                memory with the collection.
+
+        Returns:
+            A :class:`NumpyExport` with ``intensity`` of shape
+            ``(n_spectra, n_points)`` and ``axis`` of shape ``(n_points,)``.
+        """
+
+        import numpy as np
+
+        if copy:
+            return NumpyExport(
+                intensity=np.array(self.intensity, copy=True),
+                axis=np.array(self.axis, copy=True),
+            )
+        return NumpyExport(intensity=self.intensity, axis=self.axis)
 
     def copy(self) -> SpectrumCollection:
         """Return a detached copy of the collection."""

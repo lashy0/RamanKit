@@ -1,6 +1,7 @@
 from ramankit import analysis, metrics, synthetic
 from ramankit.core import (
     Metadata,
+    NumpyExport,
     Provenance,
     ProvenanceStep,
     RamanImage,
@@ -12,6 +13,7 @@ __all__ = [
     "analysis",
     "Metadata",
     "metrics",
+    "NumpyExport",
     "Provenance",
     "ProvenanceStep",
     "RamanImage",

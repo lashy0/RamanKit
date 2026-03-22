@@ -133,3 +133,108 @@ def test_axis_transform_row_fallback_requires_shared_axis_for_collection() -> No
 
     with pytest.raises(ValueError, match="same axis for every spectrum"):
         _VaryAxisPerSpectrum().apply(collection)
+
+
+# --- SpectrumCollection pipeline tests ---
+
+
+def test_pipeline_applies_axis_preserving_steps_to_collection() -> None:
+    """Apply axis-preserving preprocessing steps to a SpectrumCollection."""
+
+    collection = SpectrumCollection(
+        axis=np.linspace(100.0, 400.0, 9),
+        intensity=np.array([
+            [5.0, 6.0, 8.0, 15.0, 30.0, 16.0, 9.0, 6.0, 5.0],
+            [10.0, 12.0, 16.0, 30.0, 60.0, 32.0, 18.0, 12.0, 10.0],
+        ]),
+    )
+    pipeline = pp.Pipeline([pp.normalization.Vector()])
+
+    processed = pipeline.apply(collection)
+
+    assert isinstance(processed, SpectrumCollection)
+    assert processed.intensity.shape == (2, 9)
+    assert np.array_equal(processed.axis, collection.axis)
+    assert processed.provenance.steps[-1].name == "normalize"
+
+
+def test_pipeline_applies_axis_changing_step_to_collection() -> None:
+    """Apply an axis-changing step to a SpectrumCollection."""
+
+    collection = SpectrumCollection(
+        axis=np.array([100.0, 200.0, 300.0, 400.0, 500.0]),
+        intensity=np.array([[1.0, 2.0, 3.0, 2.0, 1.0], [2.0, 4.0, 6.0, 4.0, 2.0]]),
+    )
+    pipeline = pp.Pipeline([
+        pp.misc.Cropper(lower_bound=200.0, upper_bound=400.0),
+    ])
+
+    processed = pipeline.apply(collection)
+
+    assert isinstance(processed, SpectrumCollection)
+    assert np.array_equal(processed.axis, np.array([200.0, 300.0, 400.0]))
+    assert processed.intensity.shape == (2, 3)
+    assert processed.provenance.steps[-1].name == "crop"
+
+
+def test_pipeline_applies_mixed_steps_to_collection() -> None:
+    """Apply a mix of axis-changing and axis-preserving steps to a collection."""
+
+    collection = SpectrumCollection(
+        axis=np.array([100.0, 200.0, 300.0]),
+        intensity=np.array([[1.0, 3.0, 2.0], [2.0, 6.0, 4.0]]),
+    )
+    pipeline = pp.Pipeline([
+        _ShiftAxis(shift=25.0),
+        pp.normalization.Max(),
+    ])
+
+    processed = pipeline.apply(collection)
+
+    assert isinstance(processed, SpectrumCollection)
+    assert np.array_equal(processed.axis, np.array([125.0, 225.0, 325.0]))
+    assert np.allclose(processed.intensity[0], np.array([1.0 / 3.0, 1.0, 2.0 / 3.0]))
+    assert [s.name for s in processed.provenance.steps[-2:]] == [
+        "shift_axis",
+        "normalize",
+    ]
+
+
+def test_pipeline_preserves_collection_metadata_and_semantics() -> None:
+    """Preserve metadata, spectral_axis_name, and spectral_unit through pipeline."""
+
+    from ramankit import Metadata
+
+    collection = SpectrumCollection(
+        axis=np.array([100.0, 200.0, 300.0]),
+        intensity=np.array([[1.0, 3.0, 2.0]]),
+        metadata=Metadata(sample="polymer"),
+        spectral_axis_name="raman_shift",
+        spectral_unit="cm^-1",
+    )
+    pipeline = pp.Pipeline([pp.normalization.Max()])
+
+    processed = pipeline.apply(collection)
+
+    assert processed.metadata.sample == "polymer"
+    assert processed.spectral_axis_name == "raman_shift"
+    assert processed.spectral_unit == "cm^-1"
+
+
+def test_pipeline_crop_on_collection_reduces_shape() -> None:
+    """Crop reduces the number of spectral points across all spectra."""
+
+    collection = SpectrumCollection(
+        axis=np.array([100.0, 200.0, 300.0, 400.0, 500.0]),
+        intensity=np.array([
+            [1.0, 2.0, 3.0, 4.0, 5.0],
+            [5.0, 4.0, 3.0, 2.0, 1.0],
+            [1.0, 1.0, 1.0, 1.0, 1.0],
+        ]),
+    )
+    pipeline = pp.Pipeline([pp.misc.Cropper(lower_bound=200.0, upper_bound=400.0)])
+
+    processed = pipeline.apply(collection)
+
+    assert processed.intensity.shape == (3, 3)
+    assert np.array_equal(processed.axis, np.array([200.0, 300.0, 400.0]))

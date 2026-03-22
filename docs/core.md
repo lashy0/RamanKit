@@ -53,6 +53,19 @@ mean_spectrum = collection.mean()
 std_spectrum = collection.std()
 ```
 
+Collections can also be exported to NumPy explicitly for external analysis or
+machine-learning workflows:
+
+```python
+export = collection.to_numpy()
+
+export.intensity  # shape: (n_spectra, n_points)
+export.axis       # shape: (n_points,)
+```
+
+Set `copy=False` to share memory with the underlying collection arrays instead
+of creating detached copies.
+
 ## `RamanImage`
 
 Use `RamanImage` for hyperspectral cubes.

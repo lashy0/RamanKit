@@ -5,6 +5,7 @@
 ```python
 from ramankit import (
     Metadata,
+    NumpyExport,
     Provenance,
     ProvenanceStep,
     RamanImage,
@@ -19,7 +20,7 @@ The top-level package intentionally exports the core domain models plus the metr
 ## Core package
 
 ```python
-from ramankit.core import Spectrum, SpectrumCollection, RamanImage
+from ramankit.core import NumpyExport, RamanImage, Spectrum, SpectrumCollection
 ```
 
 Use this when you want explicit access to the core domain layer.

@@ -7,7 +7,7 @@ import numpy as np
 from ramankit.core._validation import validate_axis_compatibility
 from ramankit.core.spectrum import Spectrum
 from ramankit.pipelines.pipeline import AxisTransformStep, PreprocessingStep
-from ramankit.preprocessing._types import Array1D, SpectralDataT
+from ramankit.preprocessing._types import Array1D, Array2D, SpectralDataT
 
 
 @dataclass(frozen=True, slots=True)
@@ -42,6 +42,73 @@ class Cropper(AxisTransformStep):
         if not np.any(mask):
             raise ValueError("Expected crop bounds to retain at least one spectral point.")
         return axis[mask], intensity[mask]
+
+    def _transform_batch_with_axis(
+        self, intensity: Array2D, axis: Array1D,
+    ) -> tuple[Array1D, Array2D] | None:
+        source_min = float(np.min(axis))
+        source_max = float(np.max(axis))
+        if self.lower_bound < source_min or self.upper_bound > source_max:
+            raise ValueError("Expected crop bounds to stay within the source axis range.")
+        mask = (axis >= self.lower_bound) & (axis <= self.upper_bound)
+        if not np.any(mask):
+            raise ValueError("Expected crop bounds to retain at least one spectral point.")
+        return axis[mask], intensity[:, mask]
+
+
+@dataclass(frozen=True, slots=True)
+class IndexCropper(AxisTransformStep):
+    """Crop spectra by index positions using Python-style slicing."""
+
+    function_name = "crop"
+    method_name = "index_range"
+
+    start_index: int | None = None
+    stop_index: int | None = None
+
+    def __post_init__(self) -> None:
+        if self.start_index is not None and not isinstance(self.start_index, int):
+            raise TypeError("Expected start_index to be an integer.")
+        if self.stop_index is not None and not isinstance(self.stop_index, int):
+            raise TypeError("Expected stop_index to be an integer.")
+        if self.start_index is None and self.stop_index is None:
+            raise ValueError("Expected at least one of start_index or stop_index.")
+        if (
+            self.start_index is not None
+            and self.stop_index is not None
+            and self.start_index >= self.stop_index
+        ):
+            raise ValueError("Expected start_index to be smaller than stop_index.")
+
+    def parameters(self) -> dict[str, object]:
+        return {
+            "start_index": self.start_index,
+            "stop_index": self.stop_index,
+        }
+
+    def _transform_with_axis(
+        self, intensity: Array1D, axis: Array1D,
+    ) -> tuple[Array1D, Array1D]:
+        start = self.start_index if self.start_index is not None else 0
+        stop = self.stop_index if self.stop_index is not None else len(axis)
+        cropped_axis = axis[start:stop]
+        if len(cropped_axis) == 0:
+            raise ValueError(
+                "Expected index crop to retain at least one spectral point."
+            )
+        return cropped_axis, intensity[start:stop]
+
+    def _transform_batch_with_axis(
+        self, intensity: Array2D, axis: Array1D,
+    ) -> tuple[Array1D, Array2D] | None:
+        start = self.start_index if self.start_index is not None else 0
+        stop = self.stop_index if self.stop_index is not None else len(axis)
+        cropped_axis = axis[start:stop]
+        if len(cropped_axis) == 0:
+            raise ValueError(
+                "Expected index crop to retain at least one spectral point."
+            )
+        return cropped_axis, intensity[:, start:stop]
 
 
 @dataclass(frozen=True, slots=True)

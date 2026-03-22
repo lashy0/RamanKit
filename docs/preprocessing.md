@@ -90,6 +90,7 @@ Other methods:
 ### Axis-transform steps
 
 - `pp.misc.Cropper`
+- `pp.misc.IndexCropper`
 - `pp.resample.Linear`
 
 ## Custom axis-transform steps
@@ -133,9 +134,44 @@ pipeline = pp.Pipeline(
 processed = pipeline.apply(spectrum)
 ```
 
+Pipelines work the same way for `SpectrumCollection` inputs:
+
+```python
+collection_pipeline = pp.Pipeline(
+    [
+        pp.misc.IndexCropper(start_index=10, stop_index=200),
+        pp.normalization.Vector(),
+    ]
+)
+
+processed_collection = collection_pipeline.apply(collection)
+```
+
+## Common-axis resampling
+
+Use `pp.resample.resample_to_common_axis(...)` when you have multiple
+individual `Spectrum` objects sampled on different spectral grids and want one
+explicit shared axis before stacking or downstream analysis.
+
+```python
+aligned = pp.resample.resample_to_common_axis(
+    [spectrum_a, spectrum_b, spectrum_c],
+    n_points=512,
+)
+```
+
+The function:
+
+- computes the overlapping spectral range across all inputs
+- builds one explicit uniform axis inside that overlap
+- linearly interpolates every spectrum onto that shared axis
+- returns a `SpectrumCollection`
+
 ## Scientific notes
 
 - preprocessing always works along the spectral axis
 - axis changes are explicit through `AxisTransformStep`; ordinary preprocessing steps preserve axis semantics
 - resampling is explicit; arithmetic and reductions do not auto-align axes
+- common-axis resampling is explicit and uses only the overlapping axis region
 - metadata is preserved and provenance is extended, not replaced
+

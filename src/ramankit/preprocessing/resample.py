@@ -6,6 +6,9 @@ import numpy as np
 import numpy.typing as npt
 
 from ramankit.core._validation import NumericArray, coerce_axis
+from ramankit.core.collection import SpectrumCollection
+from ramankit.core.metadata import ProvenanceStep, ensure_provenance
+from ramankit.core.spectrum import Spectrum
 from ramankit.pipelines.pipeline import AxisTransformStep
 from ramankit.preprocessing._types import Array1D
 
@@ -49,3 +52,99 @@ class Linear(AxisTransformStep):
         if target_axis[0] > target_axis[-1]:
             resampled = resampled[::-1]
         return target_axis, np.asarray(resampled, dtype=np.float64)
+
+
+def resample_to_common_axis(
+    spectra: list[Spectrum] | tuple[Spectrum, ...],
+    *,
+    n_points: int | None = None,
+) -> SpectrumCollection:
+    """Resample spectra with different axes onto a common uniform grid.
+
+    Finds the overlapping axis range across all input spectra, creates a
+    uniform grid within that range, and linearly interpolates each spectrum
+    onto the common grid.
+
+    Args:
+        spectra: Two or more spectra with potentially different spectral axes.
+        n_points: Number of points in the common grid.  If ``None``, uses the
+            median number of points across the input spectra.
+
+    Returns:
+        A :class:`SpectrumCollection` with all spectra on the same axis.
+
+    Raises:
+        ValueError: If fewer than two spectra are provided.
+        ValueError: If the overlapping axis range is empty.
+        ValueError: If spectra have incompatible spectral semantics.
+    """
+
+    if len(spectra) < 2:
+        raise ValueError(
+            "Expected at least two spectra for common-axis resampling."
+        )
+
+    # Validate compatible spectral semantics.
+    ref_name = spectra[0].spectral_axis_name
+    ref_unit = spectra[0].spectral_unit
+    for i, s in enumerate(spectra[1:], start=1):
+        if s.spectral_axis_name != ref_name:
+            raise ValueError(
+                f"Spectrum {i} has spectral_axis_name={s.spectral_axis_name!r}, "
+                f"expected {ref_name!r}."
+            )
+        if s.spectral_unit != ref_unit:
+            raise ValueError(
+                f"Spectrum {i} has spectral_unit={s.spectral_unit!r}, "
+                f"expected {ref_unit!r}."
+            )
+
+    # Find overlapping axis range.
+    common_min = float(max(float(np.min(s.axis)) for s in spectra))
+    common_max = float(min(float(np.max(s.axis)) for s in spectra))
+    if common_min >= common_max:
+        raise ValueError(
+            "No overlapping axis range found across the input spectra."
+        )
+
+    # Determine grid size.
+    if n_points is None:
+        n_points = int(np.median([s.n_points for s in spectra]))
+    if n_points < 2:
+        raise ValueError("Expected n_points to be at least 2.")
+
+    common_axis = np.linspace(common_min, common_max, n_points)
+
+    # Interpolate each spectrum onto the common axis.
+    rows: list[npt.NDArray[np.float64]] = []
+    for s in spectra:
+        source_axis = np.asarray(s.axis, dtype=np.float64)
+        source_intensity = np.asarray(s.intensity, dtype=np.float64)
+        if source_axis[0] > source_axis[-1]:
+            source_axis = source_axis[::-1]
+            source_intensity = source_intensity[::-1]
+        resampled = np.interp(common_axis, source_axis, source_intensity)
+        rows.append(resampled)
+
+    intensity = np.stack(rows, axis=0)
+
+    provenance = ensure_provenance(None).append(
+        ProvenanceStep(
+            name="resample",
+            parameters={
+                "method": "common_axis",
+                "n_spectra": len(spectra),
+                "n_points": n_points,
+                "common_min": common_min,
+                "common_max": common_max,
+            },
+        )
+    )
+
+    return SpectrumCollection(
+        axis=common_axis,
+        intensity=intensity,
+        provenance=provenance,
+        spectral_axis_name=ref_name,
+        spectral_unit=ref_unit,
+    )

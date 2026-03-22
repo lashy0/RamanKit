@@ -58,6 +58,7 @@ collection = SpectrumCollection(
 )
 
 mean_spectrum = collection.mean()
+export = collection.to_numpy()
 ```
 
 ### Preprocessing
@@ -91,6 +92,11 @@ Baseline correction includes least-squares (`ASLS`, `ARPLS`, `IARPLS`, `ASPLS`),
 polynomial (`Poly`, `ModPoly`, `PenalisedPoly`, `IModPoly`), and additional
 methods such as `Goldindec`, `IRSQR`, `CornerCutting`, and `FABC`.
 Smoothing includes `SavGol`, `Whittaker`, and `Gaussian`. Normalization includes `Vector`, `Area`, `Max`, and `MinMax`.
+
+Axis-aware preprocessing also includes `Cropper`, `IndexCropper`, and
+`Linear` resampling. Use `ramankit.preprocessing.resample.resample_to_common_axis`
+to align multiple individual `Spectrum` objects onto one explicit shared axis
+before building a `SpectrumCollection`.
 
 ### Peak analysis
 
@@ -249,6 +255,7 @@ uv run pytest
 uv run ruff check .
 uv run mypy src
 ```
+
 
 
 

@@ -209,3 +209,69 @@ def test_collection_add_raises_for_container_type_mismatch() -> None:
 
     with pytest.raises(ValueError, match="same container type"):
         collection.add(RamanImage(axis=[1.0, 2.0], intensity=np.ones((1, 1, 2))))
+
+
+# --- to_numpy tests ---
+
+
+def test_to_numpy_returns_correct_shapes() -> None:
+    """to_numpy returns intensity (n_spectra, n_points) and axis (n_points,)."""
+
+    col = SpectrumCollection(
+        axis=[100.0, 200.0, 300.0],
+        intensity=[[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]],
+    )
+
+    export = col.to_numpy()
+
+    assert export.intensity.shape == (2, 3)
+    assert export.axis.shape == (3,)
+
+
+def test_to_numpy_values_match_collection() -> None:
+    """Exported arrays contain the same values as the collection."""
+
+    col = SpectrumCollection(
+        axis=[100.0, 200.0, 300.0],
+        intensity=[[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]],
+    )
+
+    export = col.to_numpy()
+
+    np.testing.assert_array_equal(export.intensity, col.intensity)
+    np.testing.assert_array_equal(export.axis, col.axis)
+
+
+def test_to_numpy_copy_true_returns_independent_arrays() -> None:
+    """With copy=True, mutating the export does not affect the collection."""
+
+    col = SpectrumCollection(axis=[1.0, 2.0], intensity=[[1.0, 2.0]])
+
+    export = col.to_numpy(copy=True)
+    export.intensity[0, 0] = -999.0
+
+    assert col.intensity[0, 0] == 1.0
+
+
+def test_to_numpy_copy_false_returns_views() -> None:
+    """With copy=False, exported arrays share memory with the collection."""
+
+    col = SpectrumCollection(axis=[1.0, 2.0], intensity=[[1.0, 2.0]])
+
+    export = col.to_numpy(copy=False)
+
+    assert np.shares_memory(export.intensity, col.intensity)
+    assert np.shares_memory(export.axis, col.axis)
+
+
+def test_to_numpy_axis_matches_collection() -> None:
+    """Exported axis values match the collection spectral axis."""
+
+    col = SpectrumCollection(
+        axis=[300.0, 200.0, 100.0],
+        intensity=[[3.0, 2.0, 1.0]],
+    )
+
+    export = col.to_numpy()
+
+    np.testing.assert_array_equal(export.axis, col.axis)
