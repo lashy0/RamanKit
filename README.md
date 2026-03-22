@@ -179,12 +179,11 @@ spectrum = CSVLoader(
 
 ```python
 from ramankit import Spectrum
-from ramankit.io import load
-from ramankit.io.npz import NPZSaver
+from ramankit.io import load, save
 
 spectrum = Spectrum(axis=[100.0, 200.0, 300.0], intensity=[1.0, 2.0, 3.0])
-NPZSaver().save(spectrum, "spectrum.npz")
-loaded = load("spectrum.npz", format="npz")
+save(spectrum, "spectrum.npz")
+loaded = load("spectrum.npz")
 ```
 
 ### Generic I/O contracts

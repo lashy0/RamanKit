@@ -18,6 +18,16 @@ class _LoaderLike(Protocol):
     def can_load(self, path: str | Path) -> bool: ...
 
 
+class _SaverLike(Protocol):
+    @property
+    def format_name(self) -> str | None: ...
+
+    @property
+    def supported_suffixes(self) -> tuple[str, ...]: ...
+
+    def save(self, data: SpectralContainer, path: str | Path) -> None: ...
+
+
 class LoaderRegistry:
     """Store and resolve RamanKit loaders with deterministic detection rules."""
 
@@ -92,7 +102,70 @@ class LoaderRegistry:
         return [loader.format_name or "<unknown>" for loader in loaders]
 
 
-def _build_builtin_registry() -> LoaderRegistry:
+class SaverRegistry:
+    """Store and resolve RamanKit savers by format key or file suffix."""
+
+    def __init__(self) -> None:
+        self._savers: dict[str, _SaverLike] = {}
+
+    def register(self, saver: _SaverLike) -> None:
+        """Register one saver instance by its stable format key."""
+
+        format_name = (saver.format_name or "").strip().lower()
+        if not format_name:
+            raise ValueError("Registered savers must define a non-empty format_name.")
+        if format_name in self._savers:
+            raise ValueError(f"SaverRegistry already has a saver registered for '{format_name}'.")
+        self._savers[format_name] = saver
+
+    def get(self, format_name: str) -> _SaverLike:
+        """Return the registered saver for an explicit format key."""
+
+        normalized = format_name.strip().lower()
+        try:
+            return self._savers[normalized]
+        except KeyError as error:
+            available = ", ".join(sorted(self._savers)) or "<none>"
+            raise ValueError(
+                f"Unsupported I/O format '{format_name}'. Registered formats: {available}."
+            ) from error
+
+    def save(
+        self,
+        data: SpectralContainer,
+        path: str | Path,
+        *,
+        format: str | None = None,
+    ) -> None:
+        """Save one RamanKit container to a path with format resolution."""
+
+        candidate = Path(path)
+        if format is not None:
+            self.get(format).save(data, candidate)
+            return
+
+        suffix = candidate.suffix.lower()
+        matches = [
+            saver
+            for saver in self._savers.values()
+            if suffix in {s.lower() for s in saver.supported_suffixes}
+        ]
+        if len(matches) > 1:
+            names = ", ".join(s.format_name or "<unknown>" for s in matches)
+            raise ValueError(
+                f"Multiple savers match suffix '{suffix}': {names}. "
+                "Provide format=... to save explicitly."
+            )
+        if len(matches) == 1:
+            matches[0].save(data, candidate)
+            return
+
+        raise ValueError(
+            f"No registered saver matched '{candidate}'. Provide format=... to save explicitly."
+        )
+
+
+def _build_builtin_loader_registry() -> LoaderRegistry:
     from ramankit.io.bwtek import BWTekLoader
     from ramankit.io.csv import CSVLoader
     from ramankit.io.npz import NPZLoader
@@ -104,7 +177,16 @@ def _build_builtin_registry() -> LoaderRegistry:
     return registry
 
 
-BUILTIN_LOADER_REGISTRY = _build_builtin_registry()
+def _build_builtin_saver_registry() -> SaverRegistry:
+    from ramankit.io.npz import NPZSaver
+
+    registry = SaverRegistry()
+    registry.register(NPZSaver())
+    return registry
+
+
+BUILTIN_LOADER_REGISTRY = _build_builtin_loader_registry()
+BUILTIN_SAVER_REGISTRY = _build_builtin_saver_registry()
 
 
 def load(path: str | Path, *, format: str | None = None) -> SpectralContainer:
@@ -113,9 +195,16 @@ def load(path: str | Path, *, format: str | None = None) -> SpectralContainer:
     return BUILTIN_LOADER_REGISTRY.load(path, format=format)
 
 
-def _save_npz(data: SpectralContainer, path: str | Path) -> None:
-    """Persist one container through the built-in NPZ saver."""
+def save(
+    data: SpectralContainer,
+    path: str | Path,
+    *,
+    format: str | None = None,
+) -> None:
+    """Save one RamanKit container through the built-in saver registry.
 
-    from ramankit.io.npz import NPZSaver
+    The output format is inferred from the file suffix. Use ``format=`` to
+    override when the suffix alone is ambiguous.
+    """
 
-    NPZSaver().save(data, path)
+    BUILTIN_SAVER_REGISTRY.save(data, path, format=format)

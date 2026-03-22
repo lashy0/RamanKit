@@ -17,6 +17,9 @@ from ramankit.io.base import BaseLoader, BaseSaver, SpectralContainer
 class NPZSaver(BaseSaver[SpectralContainer]):
     """Persist RamanKit spectral containers in the internal NPZ format."""
 
+    format_name = "npz"
+    supported_suffixes = (".npz",)
+
     def save(self, data: SpectralContainer, path: str | Path) -> None:
         """Save one spectral container to an NPZ archive."""
 

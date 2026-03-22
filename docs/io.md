@@ -1,11 +1,11 @@
 # I/O abstractions
 
-RamanKit exposes generic loader and saver contracts, a built-in loader registry, and one built-in NPZ persistence format for round-tripping existing containers.
+RamanKit exposes generic loader and saver contracts, built-in registries, and one built-in NPZ persistence format for round-tripping existing containers.
 
 ## Public API
 
 ```python
-from ramankit.io import BaseLoader, BaseSaver, LoaderRegistry, load
+from ramankit.io import BaseLoader, BaseSaver, LoaderRegistry, SaverRegistry, load, save
 from ramankit.io.npz import NPZLoader, NPZSaver
 ```
 
@@ -32,43 +32,50 @@ def can_load(self, path: str | Path) -> bool:
 directory layout, or a small fixed-size header read, but it must not perform
 deep parsing.
 
-`BaseSaver[T]` defines one method:
+`BaseSaver[T]` defines one method, plus the same `format_name` and `supported_suffixes` class variables as `BaseLoader`:
 
 ```python
 def save(self, data: T, path: str | Path) -> None:
     ...
 ```
 
-## Registry-based loading
+## Registry-based loading and saving
 
-Top-level loading goes through the built-in registry:
+Top-level loading and saving go through the built-in registries:
 
 ```python
-from ramankit.io import load
+from ramankit.io import load, save
 
-loaded = load("spectrum.npz", format="npz")
+data = load("spectrum.npz")
+save(data, "spectrum.npz")
+```
+
+Both accept an optional `format=` override:
+
+```python
+data = load("data.txt", format="csv")
+save(data, "output.npz", format="npz")
 ```
 
 Auto-detection is conservative:
 
 - explicit `format=` always wins
 - otherwise suffix matching runs first
-- optional `can_load()` runs only when no suffix matched
+- optional `can_load()` runs only when no suffix matched (loaders only)
 - ambiguous matches raise `ValueError`
 - no match raises `ValueError`
 
 ## Built-in NPZ format
 
-The preferred NPZ workflow is:
+The preferred NPZ workflow uses the top-level `load` / `save` functions:
 
 ```python
 from ramankit import Spectrum
-from ramankit.io import load
-from ramankit.io.npz import NPZSaver
+from ramankit.io import load, save
 
 spectrum = Spectrum(axis=[100.0, 200.0, 300.0], intensity=[1.0, 2.0, 3.0])
-NPZSaver().save(spectrum, "spectrum.npz")
-loaded = load("spectrum.npz", format="npz")
+save(spectrum, "spectrum.npz")
+loaded = load("spectrum.npz")
 ```
 
 Low-level access stays available through `ramankit.io.npz`:

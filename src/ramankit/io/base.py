@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import ClassVar
+from typing import ClassVar  # noqa: F401 (re-exported for subclass use)
 
 from ramankit.core.collection import SpectrumCollection
 from ramankit.core.image import RamanImage
@@ -45,6 +45,9 @@ class BaseLoader[SpectralContainerT: SpectralContainer](ABC):
 
 class BaseSaver[SpectralContainerT: SpectralContainer](ABC):
     """Define the generic contract for saving one spectral container to a path."""
+
+    format_name: ClassVar[str | None] = None
+    supported_suffixes: ClassVar[tuple[str, ...]] = ()
 
     @abstractmethod
     def save(self, data: SpectralContainerT, path: str | Path) -> None:
