@@ -77,6 +77,49 @@ Low-level access stays available through `ramankit.io.npz`:
 from ramankit.io.npz import NPZLoader, NPZSaver
 ```
 
+## CSV / TSV loader
+
+The built-in CSV loader handles comma, tab, and semicolon-delimited files:
+
+```python
+from ramankit.io import load
+
+# Auto-detected by .csv or .tsv suffix
+spectrum = load("data.csv")
+spectrum = load("data.tsv")
+
+# Explicit format for .txt files
+spectrum = load("data.txt", format="csv")
+```
+
+For non-standard layouts, configure the loader directly:
+
+```python
+from ramankit.io.csv import CSVLoader
+
+loader = CSVLoader(
+    axis_column="Raman Shift",
+    intensity_column="Intensity",
+    delimiter=";",
+    skip_rows=2,
+    decimal=",",
+    spectral_axis_name="raman_shift",
+    spectral_unit="cm^-1",
+)
+spectrum = loader.load("data.csv")
+```
+
+| Parameter | Default | Meaning |
+|---|---|---|
+| `axis_column` | `0` | Column for spectral axis (name or index) |
+| `intensity_column` | `1` | Column for intensity (name or index) |
+| `delimiter` | `None` | Field separator; `None` auto-detects (tab, semicolon, comma) |
+| `skip_rows` | `0` | Leading rows to skip before header/data |
+| `encoding` | `"utf-8"` | Text encoding |
+| `decimal` | `"."` | Decimal separator (`"."` or `","`) |
+| `spectral_axis_name` | `None` | Spectral axis name set on the returned Spectrum |
+| `spectral_unit` | `None` | Spectral unit set on the returned Spectrum |
+
 ## Example custom loader
 
 ```python

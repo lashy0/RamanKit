@@ -147,6 +147,34 @@ All methods accept `SpectrumCollection` or `RamanImage`. Scores preserve the
 spatial shape of the input. Component spectra are returned as a
 `SpectrumCollection` sharing the input spectral axis with provenance recorded.
 
+### Loading data
+
+```python
+from ramankit.io import load
+
+# CSV / TSV — auto-detected by suffix
+spectrum = load("data.csv")
+spectrum = load("data.tsv")
+
+# B&W Tek TXT — auto-detected by suffix
+spectrum = load("measurement.txt")
+
+# Explicit format when suffix is ambiguous
+spectrum = load("data.txt", format="csv")
+
+# Custom CSV layout
+from ramankit.io.csv import CSVLoader
+
+spectrum = CSVLoader(
+    axis_column="Raman Shift",
+    intensity_column="Intensity",
+    delimiter=";",
+    skip_rows=2,
+    spectral_axis_name="raman_shift",
+    spectral_unit="cm^-1",
+).load("data.csv")
+```
+
 ### NPZ persistence
 
 ```python

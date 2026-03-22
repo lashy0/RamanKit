@@ -94,11 +94,13 @@ class LoaderRegistry:
 
 def _build_builtin_registry() -> LoaderRegistry:
     from ramankit.io.bwtek import BWTekLoader
+    from ramankit.io.csv import CSVLoader
     from ramankit.io.npz import NPZLoader
 
     registry = LoaderRegistry()
     registry.register(NPZLoader())
     registry.register(BWTekLoader())
+    registry.register(CSVLoader())
     return registry
 
 

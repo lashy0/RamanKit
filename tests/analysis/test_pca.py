@@ -55,7 +55,7 @@ def _make_image(
 
 
 def test_pca_collection_returns_correct_types_and_shapes() -> None:
-    """Decompose a collection and return components, scores, and variance ratio with correct shapes."""
+    """Decompose a collection and return components, scores, and variance ratio."""
 
     collection = _make_collection(n_spectra=10, n_points=50)
     result = ra.pca(collection, n_components=3)
@@ -106,7 +106,7 @@ def test_pca_provenance_on_components() -> None:
 
 
 def test_pca_components_have_fresh_metadata() -> None:
-    """Assign fresh default metadata to the component collection rather than copying input metadata."""
+    """Assign fresh default metadata to the component collection."""
 
     collection = _make_collection()
     result = ra.pca(collection, n_components=2)
